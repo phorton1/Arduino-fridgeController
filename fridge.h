@@ -6,15 +6,16 @@
 
 #pragma once
 
-// global defines
+#include <myIOTDevice.h>
+
+// global debugging defines
 
 #define PLOT_VALUES 		0		// to output only vSense integers for Arduino plotter
-
-
 #define TEMP_BREADBOARD		1
 
-
+//=========================================================
 // pins
+//=========================================================
 
 #define PIN_PUMP_PWM		16		// PWM sent to BC547 transistor tween C2 and T from inverter
 #define PIN_EXT_LED			13		// external WS2812b LED(s)
@@ -50,7 +51,66 @@
 #define LED_FAN_ON			PIN_LED_YELLOW
 
 
+
+//------------------------
+// myIOT definition
+//------------------------
+
+#define FRIDGE_CONTROLLER			"fridgeController"
+#define FRIDGE_CONTROLLER_VERSION	"fc0.1"
+#define FRIDGE_CONTROLLER_URL		"https://github.com/phorton1/Arduino-fridgeController"
+
+// ids
+
+#define ID_TEMPERATURE_1           	"TEMPERATURE_1"
+#define ID_TEMP_ERROR           	"TEMP_ERROR"
+
+#define ID_INV_ERROR           		"INV_ERROR"
+#define ID_INV_PLUS           		"INV_PLUS"
+#define ID_INV_FAN           		"INV_FAN"
+#define ID_INV_COMPRESS           	"INV_COMPRESS"
+
+
+
+class Fridge : public myIOTDevice
+{
+public:
+
+    Fridge();
+    ~Fridge() {}
+
+    virtual void setup() override;
+    virtual void loop() override;
+
+    static const valDescriptor m_fridge_values[];
+
+    // values
+
+	static float	_temperature1;
+	static int		_temp_error;
+
+	static int		_inv_error;
+	static bool 	_inv_plus;
+	static bool		_inv_fan;
+	static bool		_inv_compress;
+
+	// methods
+
+	void stateMachine();
+	static void stateTask(void *param);
+
+};
+
+
+extern Fridge *fridge;
+
+
+
+
+
+//=========================================================
 // external utilities in fridgeUtils.cpp
+//=========================================================
 
 extern int rpmToDuty(int rpm);
 

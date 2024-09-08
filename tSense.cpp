@@ -17,15 +17,15 @@
 //		anecdotally on the web.
 // So I rewrote it for me.
 
-#include <myDebug.h>
 #include "tSense.h"
 #include "fridge.h"
+#include <myIOTLog.h>
 
 
 #define PENDING_TIMEOUT	800
 	// 750 plus some wiggle room
 
-#define dbg_sense  0
+
 
 //----------------------
 // defines
@@ -78,14 +78,22 @@ const ScratchPad  empty_pad = {0,0,0,0,0,0,0,0,0};
 // static stuff
 //-------------------------------------------
 
-const DeviceAddress KNOWN_SENSORS[NUM_KNOWN_SENSORS] = {
-	{0x28, 0x96, 0x08, 0xa1, 0x9d, 0x23, 0x0b, 0x89},	// 1
-	{0x28, 0xd3, 0x80, 0x90, 0xc3, 0x23, 0x06, 0x57},	// 2
-	{0x28, 0x3a, 0x0f, 0xe0, 0xc0, 0x23, 0x09, 0x41},	// 3
-	{0x28, 0x66, 0x13, 0x0a, 0x9e, 0x23, 0x0b, 0x2e},	// 4
-	{0x28, 0x60, 0x81, 0xdb, 0xc0, 0x23, 0x09, 0x15},	// 5
+const DeviceAddress MY_TSENSOR_01 = {0x28, 0x96, 0x08, 0xa1, 0x9d, 0x23, 0x0b, 0x89};
+const DeviceAddress MY_TSENSOR_02 = {0x28, 0xd3, 0x80, 0x90, 0xc3, 0x23, 0x06, 0x57};
+const DeviceAddress MY_TSENSOR_03 = {0x28, 0x3a, 0x0f, 0xe0, 0xc0, 0x23, 0x09, 0x41};
+const DeviceAddress MY_TSENSOR_04 = {0x28, 0x66, 0x13, 0x0a, 0x9e, 0x23, 0x0b, 0x2e};
+const DeviceAddress MY_TSENSOR_05 = {0x28, 0x60, 0x81, 0xdb, 0xc0, 0x23, 0x09, 0x15};
+
+
+static const uint8_t *KNOWN_SENSORS[] = {
+	MY_TSENSOR_01,
+	MY_TSENSOR_02,
+	MY_TSENSOR_03,
+	MY_TSENSOR_04,
+    MY_TSENSOR_05,
 };
 
+#define NUM_KNOWN_SENSORS		(sizeof(KNOWN_SENSORS)/sizeof(uint8_t *))
 
 
 
@@ -96,7 +104,7 @@ static int findKnownSensor(const DeviceAddress addr)
 		if (!memcmp(addr,KNOWN_SENSORS[i],8))
 			return i+1;
 	}
-	my_error("Could not find KNOWN_SENSOR(%s)",tSense::addrToStr(addr));
+	LOGE("Could not find KNOWN_SENSOR(%s)",tSense::addrToStr(addr));
 	return 0;
 }
 
@@ -144,7 +152,7 @@ const char *tSense::addrToStr(const DeviceAddress addr)
 
 int tSense::init()
 {
-	display(PLOT_VALUES + dbg_sense,"tSense::init()",0);
+	LOGD("tSense::init()",0);
 	proc_entry();
 
 	m_last_error = 0;
@@ -170,12 +178,12 @@ int tSense::init()
 
 				int known = findKnownSensor(addr);
 				int res = getResolution(addr);
-				display(PLOT_VALUES + dbg_sense,"known(%d) res(%d) {%s} ",
+				LOGD("known(%d) res(%d) {%s} ",
 					known,res,addrToStr(addr));
 			}
 			else
 			{
-				warning(0,"tSense.cpp INVALID FAMILY: %s",addrToStr(addr));
+				LOGW("tSense.cpp INVALID FAMILY: %s",addrToStr(addr));
 					// only a warning on the assumption the bus might
 					// contain other valid OneWire devices
 			}
@@ -263,7 +271,7 @@ float tSense::getDegreesF(const DeviceAddress addr)
 
 int tSense::tsenseError(int err_code, const DeviceAddress addr)
 {
-	my_error("TSENSE_ERROR(%d) addr(%s)",err_code,addr?addrToStr(addr):"");
+	LOGE("TSENSE_ERROR(%d) addr(%s)",err_code,addr?addrToStr(addr):"");
 	m_last_error = err_code;
 	return err_code;
 }

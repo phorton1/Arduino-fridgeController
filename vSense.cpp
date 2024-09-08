@@ -18,15 +18,9 @@
 // restart attempt.
 
 
-#include <myDebug.h>
 #include "vSense.h"
 #include "fridge.h"
-
-
-// debugging
-
-
-#define DBG_DIODE		(PLOT_VALUES + 1)
+#include <myIOTLog.h>
 
 // structure
 
@@ -161,7 +155,7 @@ void vSense::sense()
 	{
 		_plus_on = p_on;
 		digitalWrite(LED_POWER_ON,_plus_on);
-		display(PLOT_VALUES,"POWER %s",_plus_on?"ON":"OFF");
+		LOGI("POWER %s",_plus_on?"ON":"OFF");
 	}
 
 	// note fan change if power is on
@@ -170,7 +164,7 @@ void vSense::sense()
 	{
 		_fan_on = f_on;
 		digitalWrite(LED_FAN_ON,_fan_on);
-		display(PLOT_VALUES,"FAN %s",_fan_on?"ON":"OFF");
+		LOGI("FAN %s",_fan_on?"ON":"OFF");
 	}
 
 	// note diode change if power is on
@@ -198,7 +192,7 @@ void vSense::sense()
 				if (prev_cycle)
 				{
 					uint32_t dur = now - prev_cycle;
-					display(DBG_DIODE,"CYCLE_START prev_dur=%d",dur);
+					LOGV("CYCLE_START prev_dur=%d",dur);
 				}
 				prev_cycle = now;
 			}
@@ -206,7 +200,7 @@ void vSense::sense()
 			// increment the flash count
 
 			flash_count++;
-			display(DBG_DIODE,"DIODE %s count=%d",diode_on?"ON":"OFF",flash_count);
+			LOGV("DIODE %s count=%d",diode_on?"ON":"OFF",flash_count);
 		}
 	}
 
@@ -221,7 +215,7 @@ void vSense::sense()
 		if (_error_code != flash_count)
 		{
 			_error_code = flash_count;
-			display(PLOT_VALUES,"ERROR(%d)",_error_code);
+			LOGI("ERROR(%d)",_error_code);
 		}
 	}
 
@@ -235,7 +229,7 @@ void vSense::sense()
 		count_start = 0;
 		flash_count = 0;
 		_error_code = 0;
-		display(PLOT_VALUES,"RESTART CLEARING ERROR(%d)",_error_code);
+		LOGI("RESTART CLEARING ERROR(%d)",_error_code);
 	}
 
 	// finally, we empirically determine that the

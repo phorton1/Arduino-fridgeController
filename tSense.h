@@ -92,7 +92,7 @@ public:
 	float getDegreesF(const DeviceAddress addr);
 		// Return the temperature for a given sensor
 		// or TEMPERATURE_ERROR if pending or any problems
-	int getLastError();
+	int getLastError() { return m_last_error; }
 		// call if any method fails
 
 	static const char *addrToStr(const DeviceAddress addr);
@@ -121,12 +121,13 @@ private:
 //-----------------------------------------------------------
 // For convenience, tSense.cpp enumerates all the DS18B20's
 // I have purchased and displays their position in init().
-// Remember thaat the array is zero based, but numbers are 1 based!
 
+extern const DeviceAddress MY_TSENSOR_01;
+extern const DeviceAddress MY_TSENSOR_02;
+extern const DeviceAddress MY_TSENSOR_03;
+extern const DeviceAddress MY_TSENSOR_04;
+extern const DeviceAddress MY_TSENSOR_05;
 
-#define NUM_KNOWN_SENSORS		5
-
-extern const DeviceAddress KNOWN_SENSORS[NUM_KNOWN_SENSORS];
 
 
 // end of tSense.h
