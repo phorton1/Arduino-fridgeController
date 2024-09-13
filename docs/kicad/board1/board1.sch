@@ -74,27 +74,27 @@ $EndComp
 $Comp
 L Device:Q_NPN_CBE Q1
 U 1 1 66C61D51
-P 2900 3350
-F 0 "Q1" H 3090 3396 50  0001 L CNN
-F 1 "BC547" H 3100 3350 50  0000 L CNN
-F 2 "0_my_footprints2:transistor" H 3100 3450 50  0001 C CNN
-F 3 "~" H 2900 3350 50  0001 C CNN
-	1    2900 3350
+P 3050 3700
+F 0 "Q1" H 3240 3746 50  0001 L CNN
+F 1 "BC547" H 3250 3700 50  0000 L CNN
+F 2 "0_my_footprints2:transistor" H 3250 3800 50  0001 C CNN
+F 3 "~" H 3050 3700 50  0001 C CNN
+	1    3050 3700
 	-1   0    0    1   
 $EndComp
 $Comp
 L Device:R R11
 U 1 1 66C61D50
-P 3250 3350
-F 0 "R11" V 3150 3300 50  0001 L CNN
-F 1 "4.7K" V 3250 3350 50  0000 C CNN
-F 2 "0_my_footprints2:resistor" V 3180 3350 50  0001 C CNN
-F 3 "~" H 3250 3350 50  0001 C CNN
-	1    3250 3350
+P 3400 3700
+F 0 "R11" V 3300 3650 50  0001 L CNN
+F 1 "4.7K" V 3400 3700 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 3330 3700 50  0001 C CNN
+F 3 "~" H 3400 3700 50  0001 C CNN
+	1    3400 3700
 	0    1    1    0   
 $EndComp
-Text GLabel 2550 3150 0    50   Input ~ 0
-C2
+Text GLabel 2700 3500 0    50   Input ~ 0
+C
 $Comp
 L cnc3018_Library:BUCK01 M1
 U 1 1 61B26C43
@@ -149,28 +149,6 @@ F 2 "" H 3300 1400 50  0001 C CNN
 F 3 "" H 3300 1400 50  0001 C CNN
 	1    3300 1400
 	1    0    0    -1  
-$EndComp
-$Comp
-L power:+5V #PWR021
-U 1 1 61DD0190
-P 4000 4600
-F 0 "#PWR021" H 4000 4450 50  0001 C CNN
-F 1 "+5V" V 4000 4800 50  0000 C CNN
-F 2 "" H 4000 4600 50  0001 C CNN
-F 3 "" H 4000 4600 50  0001 C CNN
-	1    4000 4600
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR022
-U 1 1 61DD1643
-P 4200 4600
-F 0 "#PWR022" H 4200 4350 50  0001 C CNN
-F 1 "GND" V 4200 4400 50  0000 C CNN
-F 2 "" H 4200 4600 50  0001 C CNN
-F 3 "" H 4200 4600 50  0001 C CNN
-	1    4200 4600
-	-1   0    0    1   
 $EndComp
 $Comp
 L power:+5V #PWR023
@@ -403,7 +381,7 @@ FAN-
 Text GLabel 1550 2650 2    50   Input ~ 0
 DIAG_DIODE
 Text GLabel 1550 2750 2    50   Input ~ 0
-C2
+C
 Text GLabel 1550 2850 2    50   Input ~ 0
 T
 $Comp
@@ -661,56 +639,29 @@ F 3 "~" H 1700 5250 50  0001 C CNN
 	1    1700 5250
 	-1   0    0    -1  
 $EndComp
-Wire Wire Line
-	1900 4750 2000 4750
-Wire Wire Line
-	1900 4850 2100 4850
-Wire Wire Line
-	1900 4950 2200 4950
-Wire Wire Line
-	1900 5150 2000 5150
-Wire Wire Line
-	1900 5250 2100 5250
-Wire Wire Line
-	1900 5350 2200 5350
-Wire Wire Line
-	2000 5150 2000 4750
-Connection ~ 2000 4750
-Wire Wire Line
-	2000 4750 2350 4750
-Wire Wire Line
-	2100 5250 2100 4850
-Connection ~ 2100 4850
-Wire Wire Line
-	2100 4850 2350 4850
-Wire Wire Line
-	2200 5350 2200 4950
-Connection ~ 2200 4950
-Wire Wire Line
-	2200 4950 2350 4950
 $Comp
 L power:+3.3V #PWR026
 U 1 1 66EA164B
-P 2350 4750
-F 0 "#PWR026" H 2350 4600 50  0001 C CNN
-F 1 "+3.3V" V 2350 5000 50  0000 C CNN
-F 2 "" H 2350 4750 50  0001 C CNN
-F 3 "" H 2350 4750 50  0001 C CNN
-	1    2350 4750
+P 2450 4750
+F 0 "#PWR026" H 2450 4600 50  0001 C CNN
+F 1 "+3.3V" V 2450 5000 50  0000 C CNN
+F 2 "" H 2450 4750 50  0001 C CNN
+F 3 "" H 2450 4750 50  0001 C CNN
+	1    2450 4750
 	0    1    -1   0   
 $EndComp
 $Comp
 L power:GND #PWR025
 U 1 1 66EA4989
-P 2350 4850
-F 0 "#PWR025" H 2350 4600 50  0001 C CNN
-F 1 "GND" V 2350 4650 50  0000 C CNN
-F 2 "" H 2350 4850 50  0001 C CNN
-F 3 "" H 2350 4850 50  0001 C CNN
-	1    2350 4850
+P 2450 4850
+F 0 "#PWR025" H 2450 4600 50  0001 C CNN
+F 1 "GND" V 2450 4650 50  0000 C CNN
+F 2 "" H 2450 4850 50  0001 C CNN
+F 3 "" H 2450 4850 50  0001 C CNN
+	1    2450 4850
 	0    -1   -1   0   
 $EndComp
-Text GLabel 2350 4950 2    50   Input ~ 0
+Text GLabel 2450 4950 2    50   Input ~ 0
 ONE_WIRE
 Text GLabel 5750 3500 3    50   Input ~ 0
 ONE_WIRE
@@ -814,11 +765,11 @@ Text GLabel 5950 2500 1    50   Input ~ 0
 LED_RED
 Text GLabel 6050 2500 1    50   Input ~ 0
 LED_BLUE
-Text GLabel 3500 3350 2    50   Input ~ 0
+Text GLabel 3650 3700 2    50   Input ~ 0
 PWM
 Wire Wire Line
-	2550 3150 2800 3150
-Text GLabel 2600 3550 0    50   Input ~ 0
+	2700 3500 2950 3500
+Text GLabel 2750 3900 0    50   Input ~ 0
 T
 Wire Wire Line
 	3250 2200 3900 2200
@@ -827,9 +778,9 @@ Wire Wire Line
 Wire Wire Line
 	3250 2800 3900 2800
 Wire Wire Line
-	3400 3350 3500 3350
+	3550 3700 3650 3700
 Wire Wire Line
-	2600 3550 2800 3550
+	2750 3900 2950 3900
 Text Notes 1700 1200 0    50   ~ 0
 12V
 $Comp
@@ -917,4 +868,137 @@ F 3 "~" H 6250 950 50  0001 C CNN
 $EndComp
 Text GLabel 6350 2500 1    50   Input ~ 0
 S_5V
+$Comp
+L Device:R R13
+U 1 1 66E20978
+P 2150 5150
+F 0 "R13" V 2050 5100 50  0001 L CNN
+F 1 "4.7K" V 2150 5150 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 2080 5150 50  0001 C CNN
+F 3 "~" H 2150 5150 50  0001 C CNN
+	1    2150 5150
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	1900 4950 2300 4950
+Wire Wire Line
+	1900 4750 1950 4750
+Wire Wire Line
+	1900 5250 2400 5250
+Wire Wire Line
+	2400 5250 2400 4850
+Wire Wire Line
+	1900 5350 2300 5350
+Wire Wire Line
+	2300 5350 2300 5150
+Connection ~ 2300 4950
+Connection ~ 2300 5150
+Wire Wire Line
+	2300 5150 2300 4950
+Wire Wire Line
+	1900 5150 1950 5150
+Wire Wire Line
+	1950 5150 1950 4750
+Connection ~ 1950 5150
+Wire Wire Line
+	1950 5150 2000 5150
+Connection ~ 1950 4750
+Wire Wire Line
+	1950 4750 2450 4750
+Wire Wire Line
+	1900 4850 2400 4850
+Connection ~ 2400 4850
+Wire Wire Line
+	2400 4850 2450 4850
+Wire Wire Line
+	2300 4950 2450 4950
+Text GLabel 3900 3100 2    50   Input ~ 0
+S_5V
+Connection ~ 3250 3000
+$Comp
+L power:GND #PWR0101
+U 1 1 66E44268
+P 3550 3000
+F 0 "#PWR0101" H 3550 2750 50  0001 C CNN
+F 1 "GND" V 3550 2800 50  0000 C CNN
+F 2 "" H 3550 3000 50  0001 C CNN
+F 3 "" H 3550 3000 50  0001 C CNN
+	1    3550 3000
+	0    -1   1    0   
+$EndComp
+$Comp
+L Device:R R15
+U 1 1 66E4426E
+P 3400 3000
+F 0 "R15" V 3300 3000 50  0001 C CNN
+F 1 "4.7K" V 3400 3000 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 3330 3000 50  0001 C CNN
+F 3 "~" H 3400 3000 50  0001 C CNN
+	1    3400 3000
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R R14
+U 1 1 66E44274
+P 3100 3000
+F 0 "R14" V 3000 3000 50  0001 C CNN
+F 1 "10K" V 3100 3000 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 3030 3000 50  0001 C CNN
+F 3 "~" H 3100 3000 50  0001 C CNN
+	1    3100 3000
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3250 3100 3250 3000
+Wire Wire Line
+	2900 3000 2950 3000
+Wire Wire Line
+	3250 3100 3900 3100
+$Comp
+L power:+5V #PWR0102
+U 1 1 66E4764F
+P 2900 3000
+F 0 "#PWR0102" H 2900 2850 50  0001 C CNN
+F 1 "+5V" V 2900 3200 50  0000 C CNN
+F 2 "" H 2900 3000 50  0001 C CNN
+F 3 "" H 2900 3000 50  0001 C CNN
+	1    2900 3000
+	0    -1   -1   0   
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x02 J9
+U 1 1 66E63795
+P 1850 1500
+F 0 "J9" H 1768 1717 50  0001 C CNN
+F 1 "12V_TEST" V 2000 1450 50  0000 C CNN
+F 2 "0_my_footprints2:pinHeader1x2" H 1850 1500 50  0001 C CNN
+F 3 "~" H 1850 1500 50  0001 C CNN
+	1    1850 1500
+	0    -1   1    0   
+$EndComp
+Wire Wire Line
+	1850 1300 1550 1300
+Connection ~ 1550 1300
+$Comp
+L power:+5V #PWR021
+U 1 1 61DD0190
+P 4000 4600
+F 0 "#PWR021" H 4000 4450 50  0001 C CNN
+F 1 "+5V" V 4000 4800 50  0000 C CNN
+F 2 "" H 4000 4600 50  0001 C CNN
+F 3 "" H 4000 4600 50  0001 C CNN
+	1    4000 4600
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR022
+U 1 1 61DD1643
+P 4200 4600
+F 0 "#PWR022" H 4200 4350 50  0001 C CNN
+F 1 "GND" V 4200 4400 50  0000 C CNN
+F 2 "" H 4200 4600 50  0001 C CNN
+F 3 "" H 4200 4600 50  0001 C CNN
+	1    4200 4600
+	-1   0    0    1   
+$EndComp
 $EndSCHEMATC

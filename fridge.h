@@ -99,6 +99,10 @@ public:
 	void stateMachine();
 	static void stateTask(void *param);
 
+	// experiments
+	
+	String onCustomLink(const String &path,  const char **mime_type) override;
+
 };
 
 

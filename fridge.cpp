@@ -10,6 +10,26 @@
 #define TEST_COMPRESSOR_SPEED	0
 
 
+#define TEMP_INTERVAL		3000
+#define MAX_TEMP_POINTS		(24 * 60 * 2)	// 11.5K = 24 hours at 30 seconds,  2.4 hours at 3 seconds
+
+
+float plot_temps[MAX_TEMP_POINTS];
+int plot_head = 0;
+bool plot_circ = 0;
+
+static void addPlotTemp(float temp)
+{
+	plot_temps[plot_head++] = temp;
+	if (plot_head >= MAX_TEMP_POINTS)
+	{
+		plot_head = 0;
+		plot_circ = 1;
+	}
+}
+
+
+
 //------------------------------
 // myIOT setup
 //------------------------------
@@ -159,15 +179,18 @@ void Fridge::stateMachine()
 	//---------------------------
 
 	static uint32_t last_tsense;
-	if (!t_sense.pending() && now - last_tsense > 3000)
+	if (!t_sense.pending() && now - last_tsense > TEMP_INTERVAL)
 	{
 		last_tsense = now;
 		degreesF = t_sense.getDegreesF(MY_TSENSOR_01);
 			// Takes 13.3 ms with default 12 bit resolution!!
 			// Could read just 2 bytes to get it down to about 2 ms
 		if (degreesF < TEMPERATURE_ERROR)
+		{
 			LOGI("TSENSOR_01 degreesF=%0.3fF",degreesF);
+			addPlotTemp(degreesF);
 			// if TEMPERATURE_ERROR *could* check getLastError();
+		}
 		int err = t_sense.measure();
 			// takes a a little over 2ms
 			// error already reported, but might want to know it for some reason
@@ -271,5 +294,60 @@ void Fridge::loop()
 
 
 
+//----------------------------------------
+// graphing experiments
+//----------------------------------------
+
+// #include <stdio.h>
+
+static String getTemperatureJson()
+{
+	String rslt = "{";
+
+	struct timeval tv_now;
+	gettimeofday(&tv_now, NULL);
+	String tm = timeToString(tv_now.tv_sec);	// time(NULL));
+
+	rslt += "\"time\":\"" + tm + "\",";
+	rslt += "\"series\":[[";
+
+	int num = 0;
+	if (plot_circ)
+	{
+		int start = plot_head;
+		while (start<MAX_TEMP_POINTS)
+		{
+			if (num)
+				rslt += ",";
+			rslt += "[" + String(num++) + "," + String(plot_temps[start++]) + "]";
+		}
+	}
+
+	for (int i=0; i<plot_head; i++)
+	{
+		if (num)
+			rslt += ",";
+		rslt += "[" + String(num++) + "," + String(plot_temps[i]) + "]";
+	}
+	
+	rslt += "]]";
+	rslt += "}";
+	return rslt;
+}
+
+
+
+String Fridge::onCustomLink(const String &path,  const char **mime_type)
+    // called from myIOTHTTP.cpp::handleRequest()
+	// for any paths that start with /custom/
+{
+	if (path.startsWith("temp_data"))
+	{
+		*mime_type = "application/json";
+		return getTemperatureJson();
+	}
+
+    return "";
+}
 
 

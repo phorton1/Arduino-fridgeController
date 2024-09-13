@@ -109,17 +109,6 @@ Text GLabel 2800 2300 0    50   Input ~ 0
 FAN-
 Text GLabel 2900 2600 0    50   Input ~ 0
 DIODE-
-$Comp
-L Connector_Generic:Conn_01x06 J3
-U 1 1 66CE9E9E
-P 3050 5050
-F 0 "J3" V 2922 4662 50  0001 R CNN
-F 1 "INV_CONN" V 3050 5850 50  0000 R CNN
-F 2 "0_my_footprints2:myJST6_right" H 3050 5050 50  0001 C CNN
-F 3 "~" H 3050 5050 50  0001 C CNN
-	1    3050 5050
-	0    -1   1    0   
-$EndComp
 Text GLabel 2850 4850 1    50   Input ~ 0
 FAN_DIODE+
 Text GLabel 2950 4850 1    50   Input ~ 0
@@ -143,7 +132,6 @@ F 3 "" H 3900 4850 50  0001 C CNN
 	1    3900 4850
 	1    0    0    1   
 $EndComp
-NoConn ~ 4000 4850
 Text GLabel 1500 2100 2    50   Input ~ 0
 FAN-
 Text GLabel 1500 2000 2    50   Input ~ 0
@@ -207,12 +195,10 @@ Text GLabel 5350 2350 0    50   Input ~ 0
 FAN-
 Text GLabel 5350 2450 0    50   Input ~ 0
 DIAG_DIODE
-Text GLabel 5350 2550 0    50   Input ~ 0
-C2
 Text GLabel 5350 2650 0    50   Input ~ 0
 T
 Text Notes 5700 2661 0    61   ~ 0
-black\norange\nyellow\ngreen\nblue\nwhite
+red\nblack\norange\nyellow\ngreen\nblue\nwhite
 Text GLabel 2250 3700 0    50   Input ~ 0
 C
 Text GLabel 4050 3600 2    50   Input ~ 0
@@ -243,8 +229,6 @@ F 3 "~" H 3200 3700 50  0001 C CNN
 	1    3200 3700
 	1    0    0    -1  
 $EndComp
-Text GLabel 2650 3600 2    50   Input ~ 0
-C2
 $Comp
 L Switch:SW_SPDT SW1
 U 1 1 66D9908E
@@ -271,15 +255,78 @@ Text GLabel 3150 4850 1    50   Input ~ 0
 C
 Wire Wire Line
 	3850 3600 4050 3600
+Text GLabel 5350 2550 0    50   Input ~ 0
+C
 $Comp
-L Connector_Generic:Conn_01x06 J2
-U 1 1 66CD06CD
+L Connector_Generic:Conn_01x06 J3
+U 1 1 66CE9E9E
+P 3050 5050
+F 0 "J3" V 2922 4662 50  0001 R CNN
+F 1 "INV_CONN" V 3050 5850 50  0000 R CNN
+F 2 "0_my_footprints2:myJST6_right" H 3050 5050 50  0001 C CNN
+F 3 "~" H 3050 5050 50  0001 C CNN
+	1    3050 5050
+	0    -1   1    0   
+$EndComp
+$Comp
+L Device:R R4
+U 1 1 66E1FA47
+P 3600 4300
+F 0 "R4" V 3500 4300 50  0001 C CNN
+F 1 "10K?" V 3600 4300 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 3530 4300 50  0001 C CNN
+F 3 "~" H 3600 4300 50  0001 C CNN
+	1    3600 4300
+	0    1    1    0   
+$EndComp
+Text GLabel 3450 4300 0    50   Input ~ 0
+C
+Text GLabel 3750 4300 2    50   Input ~ 0
+P
+Text Notes 3450 4200 0    50   ~ 0
+OPT_RES
+$Comp
+L Connector_Generic:Conn_01x08 J2
+U 1 1 66E30B57
 P 5550 2450
 F 0 "J2" H 5630 2442 50  0001 L CNN
-F 1 "CONTROLLER" H 5300 1950 50  0000 L CNN
-F 2 "0_my_footprints2:myJST6_right" H 5550 2450 50  0001 C CNN
+F 1 "CONTROLLER" H 5400 1850 50  0000 L CNN
+F 2 "0_my_footprints2:myJST8_right" H 5550 2450 50  0001 C CNN
 F 3 "~" H 5550 2450 50  0001 C CNN
 	1    5550 2450
 	1    0    0    1   
+$EndComp
+$Comp
+L power:+12V #PWR05
+U 1 1 66E3C90D
+P 4000 4850
+F 0 "#PWR05" H 4000 4700 50  0001 C CNN
+F 1 "+12V" V 4000 5050 50  0000 C CNN
+F 2 "" H 4000 4850 50  0001 C CNN
+F 3 "" H 4000 4850 50  0001 C CNN
+	1    4000 4850
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+12V #PWR06
+U 1 1 66E40BD2
+P 5350 2050
+F 0 "#PWR06" H 5350 1900 50  0001 C CNN
+F 1 "+12V" V 5350 2250 50  0000 C CNN
+F 2 "" H 5350 2050 50  0001 C CNN
+F 3 "" H 5350 2050 50  0001 C CNN
+	1    5350 2050
+	0    -1   -1   0   
+$EndComp
+$Comp
+L power:GND #PWR0101
+U 1 1 66E439EF
+P 5350 2750
+F 0 "#PWR0101" H 5350 2500 50  0001 C CNN
+F 1 "GND" V 5350 2550 50  0000 C CNN
+F 2 "" H 5350 2750 50  0001 C CNN
+F 3 "" H 5350 2750 50  0001 C CNN
+	1    5350 2750
+	0    1    -1   0   
 $EndComp
 $EndSCHEMATC

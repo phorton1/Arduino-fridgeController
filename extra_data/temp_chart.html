@@ -1,0 +1,61 @@
+<head>
+<title>fridgeController Temperature Chart</title>
+<link href="/jquery.jqplot.min.css" rel="stylesheet">
+<script src="/jquery-3.6.0.min.js"></script>
+<script src="/jquery.jqplot.min.js"></script>
+<body>
+
+<div id="chartdiv" style="height:400px;width:800px; "></div>
+
+<button onclick="update_chart()">update_chart</button>
+&nbsp;&nbsp;&nbsp;
+<label for="refresh_interval">Refresh Interval:</label>
+<input id="refresh_interval" type='number' value='10' min='0'>
+&nbsp;&nbsp;&nbsp;
+<span id="refresh_time"></span>
+
+
+<script>
+
+var plot;
+var options = {
+	title: "Refridgerator Temperature",
+	seriesDefaults: {
+		showMarker: false,
+	},
+};
+
+
+function update_chart()
+{
+	$.ajax({
+		// have to use synchronous here, else the function
+		// will return before the data is fetched
+		async: false,
+		url: "/custom/temp_data",
+		dataType:"json",
+		success: function(data) {
+			document.querySelector("#refresh_time").innerHTML =
+				data.time;
+			if (plot)
+				plot.destroy();
+			plot = $.jqplot('chartdiv', data.series, options);
+
+			var refresh = document.querySelector("#refresh_interval");
+			if (refresh.value > 0)
+				setTimeout(update_chart,refresh.value * 1000);
+		}
+	});
+}
+
+
+
+
+$(document).ready(function() {
+	update_chart();
+});
+
+
+</script>
+
+</body>
