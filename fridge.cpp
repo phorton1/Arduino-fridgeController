@@ -5,9 +5,12 @@
 #include "fridge.h"
 #include "vSense.h"
 #include "tSense.h"
+#include "uiScreen.h"
+#include "uiButtons.h"
 #include <myIOTLog.h>
 
 #define TEST_COMPRESSOR_SPEED	0
+#define NO_TSENSE				1
 
 
 #define TEMP_INTERVAL		3000
@@ -91,6 +94,8 @@ OneWire one_wire(PIN_ONE_WIRE);
 
 tSense t_sense(&one_wire);
 vSense v_sense;
+uiScreen  ui_screen;
+uiButtons ui_buttons(PIN_BUTTON1,PIN_BUTTON2,PIN_BUTTON3);
 
 float degreesF;
 
@@ -112,17 +117,20 @@ void Fridge::setup()
     LOGD("Fridge::setup(%s) started",getVersion());
     proc_entry();
 
-	pinMode(PIN_BUTTON1,INPUT_PULLUP);
+	ui_screen.init();
 
 	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
 	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
 	ledcWrite(PWM_CHANNEL, 0);
 
 	v_sense.init();
+#if !NO_TSENSE
 	int err = t_sense.init();
 		// we ignore errors but they may be reported
+#endif
+	ui_buttons.init();
 
-    myIOTDevice::setup();
+	myIOTDevice::setup();
 
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
@@ -178,6 +186,7 @@ void Fridge::stateMachine()
 	// temperature sensors
 	//---------------------------
 
+#if !NO_TSENSE
 	static uint32_t last_tsense;
 	if (!t_sense.pending() && now - last_tsense > TEMP_INTERVAL)
 	{
@@ -196,6 +205,7 @@ void Fridge::stateMachine()
 			// error already reported, but might want to know it for some reason
 	}
 
+#endif	// !NO_TSENSE
 
 	//--------------------------------------
 	// test compressor speed
@@ -268,6 +278,11 @@ void Fridge::loop()
 {
 	myIOTDevice::loop();
 
+	// handle UI
+
+	ui_buttons.loop();
+	
+
 	// publish changed values from sensors
 
 	int i_temp = (degreesF * 10);
@@ -279,7 +294,6 @@ void Fridge::loop()
 	int terr = t_sense.getLastError();
 	if (_temp_error != terr)
 		setInt(ID_TEMP_ERROR,terr);
-
 
 	if (_inv_error != v_sense._error_code)
 		setInt(ID_INV_ERROR,v_sense._error_code);

@@ -11,7 +11,7 @@
 // global debugging defines
 
 #define PLOT_VALUES 		0		// to output only vSense integers for Arduino plotter
-#define TEMP_BREADBOARD		1
+#define TEMP_BREADBOARD		0
 
 //=========================================================
 // pins

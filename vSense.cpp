@@ -35,6 +35,7 @@
 #define FLASH_COUNT_TIME	3600	// ms for counting flashes
 #define FLASH_CLEAR_TIME	5200	// no flash indicates a restart attempt after this long
 
+#define FLASH_LEDS_AT_STARTUP	1
 
 //---------------------------------------------
 // implementation
@@ -59,6 +60,17 @@ void vSense::init()
 	pinMode(LED_POWER_ON,OUTPUT);
 	pinMode(LED_COMPRESS_ON,OUTPUT);
 	pinMode(LED_FAN_ON,OUTPUT);
+
+#if FLASH_LEDS_AT_STARTUP
+	for (int i=0; i<10; i++)
+	{
+		digitalWrite(LED_POWER_ON, (i%5) == 1);
+		digitalWrite(LED_FAN_ON, (i%5) == 2);
+		digitalWrite(LED_DIODE_ON, (i%5) == 3);
+		digitalWrite(LED_COMPRESS_ON,(i%5) == 4);
+		delay(200);
+	}
+#endif
 
 	digitalWrite(LED_DIODE_ON,0);
 	digitalWrite(LED_POWER_ON,0);
