@@ -9,8 +9,10 @@
 #include "uiButtons.h"
 #include <myIOTLog.h>
 
+#define WITH_TSENSE     0
+#define WITH_PWM        0
+
 #define TEST_COMPRESSOR_SPEED	0
-#define NO_TSENSE				1
 
 
 #define TEMP_INTERVAL		3000
@@ -119,12 +121,14 @@ void Fridge::setup()
 
 	ui_screen.init();
 
+#if WITH_PWM
 	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
 	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
 	ledcWrite(PWM_CHANNEL, 0);
+#endif
 
 	v_sense.init();
-#if !NO_TSENSE
+#if WITH_TSENSE
 	int err = t_sense.init();
 		// we ignore errors but they may be reported
 #endif
@@ -186,7 +190,7 @@ void Fridge::stateMachine()
 	// temperature sensors
 	//---------------------------
 
-#if !NO_TSENSE
+#if WITH_TSENSE
 	static uint32_t last_tsense;
 	if (!t_sense.pending() && now - last_tsense > TEMP_INTERVAL)
 	{
@@ -205,7 +209,7 @@ void Fridge::stateMachine()
 			// error already reported, but might want to know it for some reason
 	}
 
-#endif	// !NO_TSENSE
+#endif	// WITH_TSENSE
 
 	//--------------------------------------
 	// test compressor speed
@@ -363,5 +367,3 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 
     return "";
 }
-
-

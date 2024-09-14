@@ -57,7 +57,7 @@
 //------------------------
 
 #define FRIDGE_CONTROLLER			"fridgeController"
-#define FRIDGE_CONTROLLER_VERSION	"fc0.1"
+#define FRIDGE_CONTROLLER_VERSION	"fc0.2"
 #define FRIDGE_CONTROLLER_URL		"https://github.com/phorton1/Arduino-fridgeController"
 
 // ids
