@@ -92,3 +92,18 @@ void uiScreen::init()
     lcd.print(Fridge::getVersion());
 }
 
+
+
+
+void uiScreen::displayLine(int line_num, const char *msg)
+{
+    static char buf[17];
+    int len = strlen(msg);
+    if (len > 16) len = 16;
+    memset(buf,' ',16);
+    memcpy(buf,msg,len);
+    buf[16] = 0;
+    lcd.setCursor(0,line_num);
+    lcd.print(buf);
+}
+

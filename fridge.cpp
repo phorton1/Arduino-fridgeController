@@ -9,7 +9,7 @@
 #include "uiButtons.h"
 #include <myIOTLog.h>
 
-#define WITH_TSENSE     0
+#define WITH_TSENSE     2	// 2 = test numbers
 #define WITH_PWM        0
 
 #define TEST_COMPRESSOR_SPEED	0
@@ -42,14 +42,16 @@ static void addPlotTemp(float temp)
 static valueIdType dash_items[] = {
 	ID_TEMPERATURE_1,
 	ID_TEMP_ERROR,
+
+    0
+};
+
+
+static valueIdType config_items[] = {
 	ID_INV_ERROR,
 	ID_INV_PLUS,
 	ID_INV_FAN,
 	ID_INV_COMPRESS,
-    0
-};
-
-static valueIdType config_items[] = {
     0
 };
 
@@ -136,6 +138,28 @@ void Fridge::setup()
 
 	myIOTDevice::setup();
 
+
+	if (!getBool(ID_WIFI))
+	{
+		ui_screen.displayLine(1,"WIFI OFF");
+	}
+	else
+	{
+		iotConnectStatus_t status = getConnectStatus();
+		if (status == IOT_CONNECT_ALL)
+			ui_screen.displayLine(1,"AP_STA MODE");
+		else if (status == IOT_CONNECT_AP)
+			ui_screen.displayLine(1,"AP_MODE");
+		else if (status == IOT_CONNECT_STA)
+		{
+			String ip = WiFi.localIP().toString();
+			ui_screen.displayLine(1,ip.c_str());
+		}
+		else
+			ui_screen.displayLine(1,"WIFI ERROR");
+	}
+
+
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
         "stateTask",
@@ -195,18 +219,31 @@ void Fridge::stateMachine()
 	if (!t_sense.pending() && now - last_tsense > TEMP_INTERVAL)
 	{
 		last_tsense = now;
-		degreesF = t_sense.getDegreesF(MY_TSENSOR_01);
+		if (WITH_TSENSE > 1)	// fake readings to avoid errors
+		{
+			static float dir = 1.0;
+			if (degreesF >= 32) dir = -1.0;
+			if (degreesF <= -32) dir = 1.0;
+			degreesF += dir;
+		}
+		else
+			degreesF = t_sense.getDegreesF(MY_TSENSOR_01);
+
 			// Takes 13.3 ms with default 12 bit resolution!!
 			// Could read just 2 bytes to get it down to about 2 ms
 		if (degreesF < TEMPERATURE_ERROR)
 		{
-			LOGI("TSENSOR_01 degreesF=%0.3fF",degreesF);
+			LOGV("TSENSOR_01 degreesF=%0.3fF",degreesF);
 			addPlotTemp(degreesF);
 			// if TEMPERATURE_ERROR *could* check getLastError();
 		}
-		int err = t_sense.measure();
+
+		if (WITH_TSENSE < 2)
+		{
+			int err = t_sense.measure();
 			// takes a a little over 2ms
 			// error already reported, but might want to know it for some reason
+		}
 	}
 
 #endif	// WITH_TSENSE

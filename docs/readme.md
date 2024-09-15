@@ -1,5 +1,13 @@
 # fridgeController - for Danfoss BD50 w/inverter unit
 
+**Home** --
+**[Design](design.md)** --
+**[Electronics](electronics.md)** --
+**[Build](build.md)** --
+**[Notes](notes.md)**
+
+
+
 The original **Waeco Adler Barbour Cold Machine Board F-1886 Rev2** used on
 my boat's refridgeration system burned out.  It has failed several
 times, and from the beginning, and over the 17 years I have had the boat,
@@ -12,7 +20,8 @@ refridgerator, but after changing many hoses and pumps, over and over, I decided
 to just let it be air cooled.
 
 In any case I have decided to trash the original controller board and wiring harness,
-and build my own **ESP32** based **Thermostat and Controller** using my **myIOT**
+and build my own **ESP32** based **Thermostat and Controller** using my
+[**myIOT**](https://github.com/phorton1/Arduino-libraries-myIOT)
 architecture to also provide a consistent **WebUI** and remote monitoring capabilities.
 
 The circuit will NOT include a relay to control a water cooling pump, but that
@@ -22,6 +31,18 @@ Unfortunately there are no schematics of the Danfoss Inverter and so I have had
 to reverse engineer it's behavior empirically.   I have two different units.
 There is an **101N0212** currently on the pump.  I also have a spare **101N0220**
 I used for reverse engineering on my desk (wihtout a compressor).
+
+
+## A. Documentation Organization
+
+The documentation of the fridgeController is broken up into several pages:
+
+- **home** - this page, which includes an Overview of the design
+- **[Design](design.md)** - detailed design, including parameters & behavior
+- **[Electronics](electronics.md)** - circuit schematics and PCB's
+- **[Build](build.md)** - 3D printing, assembly, and installation
+- **[Notes](notes.md)** - Notes on the fridgeController, including a fairly
+	**detailed analsysis** of the *101N0212/101N0220 Danfoss*
 
 
 ## A. Inverter Analysis
