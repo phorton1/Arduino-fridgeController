@@ -16,7 +16,7 @@
 
 
 #define TEMP_INTERVAL		3000
-#define MAX_TEMP_POINTS		12	//	(24 * 60 * 2)	// 11.5K = 24 hours at 30 seconds,  2.4 hours at 3 seconds
+#define MAX_TEMP_POINTS		(24 * 60 * 2)	// 11.5K = 24 hours at 30 seconds,  2.4 hours at 3 seconds
 
 
 float plot_temps[MAX_TEMP_POINTS];
