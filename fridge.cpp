@@ -2,36 +2,58 @@
 // fridge.cpp
 //-----------------------------------------------------------
 
+#define WITH_DATA_LOG	1
+#define WITH_TSENSE     0
+#define WITH_PWM        0
+
 #include "fridge.h"
 #include "vSense.h"
-#include "tSense.h"
 #include "uiScreen.h"
 #include "uiButtons.h"
 #include <myIOTLog.h>
 
-#define WITH_TSENSE     2	// 2 = test numbers
-#define WITH_PWM        0
-
-#define TEST_COMPRESSOR_SPEED	0
-
-
 #define TEMP_INTERVAL		3000
-#define MAX_TEMP_POINTS		(24 * 60 * 2)	// 11.5K = 24 hours at 30 seconds,  2.4 hours at 3 seconds
 
 
-float plot_temps[MAX_TEMP_POINTS];
-int plot_head = 0;
-bool plot_circ = 0;
+#if WITH_TSENSE
+	#include "tSense.h"
+	#define tsense_pending()	t_sense.pending()
+	OneWire one_wire(PIN_ONE_WIRE);
+	tSense t_sense(&one_wire);
+#else
+	#define tsense_pending()	0
+#endif
 
-static void addPlotTemp(float temp)
-{
-	plot_temps[plot_head++] = temp;
-	if (plot_head >= MAX_TEMP_POINTS)
+
+//-----------------------------------------------
+// data_log setup
+//-----------------------------------------------
+
+#if WITH_DATA_LOG
+
+	#include "dataLog.h"
+
+	#define NUM_LOG_MEM		400
+
+	typedef struct
 	{
-		plot_head = 0;
-		plot_circ = 1;
-	}
-}
+		uint32_t 	dt;
+		float		temp1;
+		float		temp2;
+		uint32_t	mech;
+		uint32_t	rpm;
+	} fridgeLog_t;
+	
+	const logColumn_t  fridge_cols[] = {
+		{"temp1",	LOG_COL_TYPE_FLOAT,		-40,	40 },
+		{"temp2",	LOG_COL_TYPE_FLOAT,		60,		220 },
+		{"mech",	LOG_COL_TYPE_UINT32,	0,		2 },
+		{"rpm",		LOG_COL_TYPE_UINT32,	0,		4000 },
+	};
+
+	dataLog data_log("fridgeData",4,fridge_cols);
+
+#endif	// WITH_DATA_LOG
 
 
 
@@ -41,13 +63,10 @@ static void addPlotTemp(float temp)
 
 static valueIdType dash_items[] = {
 	ID_TEMPERATURE_1,
+	ID_TEMPERATURE_2,
 	ID_TEMP_ERROR,
-
-    0
-};
-
-
-static valueIdType config_items[] = {
+	ID_MECH_THERM,
+	ID_COMP_RPM,
 	ID_INV_ERROR,
 	ID_INV_PLUS,
 	ID_INV_FAN,
@@ -56,16 +75,25 @@ static valueIdType config_items[] = {
 };
 
 
+static valueIdType config_items[] = {
+    0
+};
+
+
 const valDescriptor Fridge::m_fridge_values[] =
 {
-    {ID_DEVICE_NAME,	VALUE_TYPE_STRING,   VALUE_STORE_PREF,     VALUE_STYLE_REQUIRED,   NULL,   	NULL,   FRIDGE_CONTROLLER },        // override base class element
+    {ID_DEVICE_NAME,	VALUE_TYPE_STRING,  VALUE_STORE_PREF,     VALUE_STYLE_REQUIRED,   NULL,   	NULL,   FRIDGE_CONTROLLER },        // override base class element
+	{ID_TEMPERATURE_1,	VALUE_TYPE_FLOAT,   VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temperature1,	NULL,	{ .float_range	= {0,	-200,	2000}},	},
+	{ID_TEMPERATURE_2,	VALUE_TYPE_FLOAT,   VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temperature2,	NULL,	{ .float_range	= {0,	-200,	2000}},	},
+	{ID_TEMP_ERROR,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temp_error,      NULL,	{ .int_range	= {0,	0,		100}},	},
 
-	{ID_TEMPERATURE_1,	VALUE_TYPE_FLOAT,    VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temperature1,	NULL,	{ .float_range	= {0,	-200,	2000}},	},
-	{ID_TEMP_ERROR,		VALUE_TYPE_INT,      VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temp_error,      NULL,	{ .int_range	= {0,	0,		100}},	},
-	{ID_INV_ERROR,		VALUE_TYPE_INT,      VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_error,       NULL,	{ .int_range	= {0,	0,		100}},	},
-	{ID_INV_PLUS,		VALUE_TYPE_INT,      VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_plus,        NULL,	{ .int_range	= {0,	0,		1}},	},
-	{ID_INV_FAN,		VALUE_TYPE_INT,      VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_fan,         NULL,	{ .int_range	= {0,	0,		1}},	},
-	{ID_INV_COMPRESS,	VALUE_TYPE_INT,      VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_compress,    NULL,	{ .int_range	= {0,	0,		1}},	},
+	{ID_MECH_THERM,		VALUE_TYPE_BOOL,	VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_mech_therm,		NULL,	},
+	{ID_COMP_RPM,		VALUE_TYPE_INT,		VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_comp_rpm,		NULL,	{ .int_range	= {0,	0,		5000}}, },
+
+	{ID_INV_ERROR,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_error,       NULL,	{ .int_range	= {0,	0,		100}},	},
+	{ID_INV_PLUS,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_plus,        NULL,	{ .int_range	= {0,	0,		1}},	},
+	{ID_INV_FAN,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_fan,         NULL,	{ .int_range	= {0,	0,		1}},	},
+	{ID_INV_COMPRESS,	VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_compress,    NULL,	{ .int_range	= {0,	0,		1}},	},
 
 };
 
@@ -75,7 +103,11 @@ const valDescriptor Fridge::m_fridge_values[] =
 // static member variable declarations
 
 float	Fridge::_temperature1;
+float	Fridge::_temperature2;
 int		Fridge::_temp_error;
+
+bool	Fridge::_mech_therm;
+int		Fridge::_comp_rpm;
 
 int		Fridge::_inv_error;
 bool 	Fridge::_inv_plus;
@@ -86,22 +118,28 @@ bool	Fridge::_inv_compress;
 Fridge *fridge;
 
 
+
 //------------------------------
 // Application Vars
 //------------------------------
 
-#define PWM_CHANNEL		0
-#define PWM_FREQ		5000
-#define PWM_RESOLUTION	8
+#if WITH_PWM
+	#define PWM_CHANNEL				0
+	#define PWM_FREQ				5000
+	#define PWM_RESOLUTION			8
+	#define TEST_COMPRESSOR_SPEED	0
+#endif
 
-OneWire one_wire(PIN_ONE_WIRE);
 
-tSense t_sense(&one_wire);
 vSense v_sense;
 uiScreen  ui_screen;
 uiButtons ui_buttons(PIN_BUTTON1,PIN_BUTTON2,PIN_BUTTON3);
 
-float degreesF;
+float cur_temperature1;
+float cur_temperature2;
+bool  cur_mech_therm;
+int	  cur_comp_rpm;
+
 
 
 //=========================================================
@@ -122,6 +160,12 @@ void Fridge::setup()
     proc_entry();
 
 	ui_screen.init();
+	ui_buttons.init();
+	v_sense.init();
+
+#if WITH_DATA_LOG
+	data_log.init(NUM_LOG_MEM);
+#endif
 
 #if WITH_PWM
 	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
@@ -129,15 +173,11 @@ void Fridge::setup()
 	ledcWrite(PWM_CHANNEL, 0);
 #endif
 
-	v_sense.init();
 #if WITH_TSENSE
 	int err = t_sense.init();
-		// we ignore errors but they may be reported
 #endif
-	ui_buttons.init();
 
 	myIOTDevice::setup();
-
 
 	if (!getBool(ID_WIFI))
 	{
@@ -170,6 +210,9 @@ void Fridge::setup()
         ESP32_CORE_OTHER);
 
     proc_leave();
+
+	randomSeed(time(NULL));
+
     LOGD("Fridge::setup(%s) completed",getVersion());
 }
 
@@ -213,46 +256,133 @@ void Fridge::stateMachine()
 	//---------------------------
 	// temperature sensors
 	//---------------------------
+	// need sensing of cur_mech_therm and system to setup cur_comp_rpm
 
-#if WITH_TSENSE
 	static uint32_t last_tsense;
-	if (!t_sense.pending() && now - last_tsense > TEMP_INTERVAL)
+	if (!tsense_pending() && now - last_tsense > TEMP_INTERVAL)
 	{
 		last_tsense = now;
-		if (WITH_TSENSE > 1)	// fake readings to avoid errors
-		{
-			static float dir = 1.0;
-			if (degreesF >= 32) dir = -1.0;
-			if (degreesF <= -32) dir = 1.0;
-			degreesF += dir;
-		}
-		else
-			degreesF = t_sense.getDegreesF(MY_TSENSOR_01);
 
-			// Takes 13.3 ms with default 12 bit resolution!!
+		#if WITH_TSENSE
+
+			// Takes 13.3 ms per sensor with default 12 bit resolution!!
 			// Could read just 2 bytes to get it down to about 2 ms
-		if (degreesF < TEMPERATURE_ERROR)
-		{
-			LOGV("TSENSOR_01 degreesF=%0.3fF",degreesF);
-			addPlotTemp(degreesF);
 			// if TEMPERATURE_ERROR *could* check getLastError();
-		}
 
-		if (WITH_TSENSE < 2)
-		{
-			int err = t_sense.measure();
+			float temp1 = t_sense.getDegreesF(MY_TSENSOR_01);
+			if (temp1 < TEMPERATURE_ERROR)
+				cur_temperature1 = temp1;
+			float temp2 = t_sense.getDegreesF(MY_TSENSOR_02);
+			if (temp2 < TEMPERATURE_ERROR)
+				cur_temperature2 = temp1;
+
+		#else
+
+			// create dummy numbers for testing logging and chart
+			// temp1 starts going down and tends around 0
+			// temp2 starts going up and tends around 100
+			// the mech_therm and comp_rpms come on for a random
+			// amount of time around 30 seconds
+
+			#define ON_TEMPERATURE	 -12
+			#define OFF_TEMPERATURE  -20
+			#define MECH_TEMPERATURE -16
+
+			static bool started = 0;
+			static float temp1_delta;
+			static float temp2_delta;
+
+			if (!started)
+			{
+				started = 1;
+				cur_temperature1 = -19;
+				temp1_delta = 1;
+
+				cur_temperature2 = 100;
+				temp2_delta = -1;
+			}
+			else
+			{
+				LOGD("    delta1=%0.3fF delta2=%0.3fF",temp1_delta,temp2_delta);
+
+				cur_temperature1 += temp1_delta;
+				if (cur_temperature1 > 80)		// ambient
+					cur_temperature1 = 80;
+
+				cur_temperature2 += temp2_delta;
+				if (cur_temperature2 < 80)		// ambient
+					cur_temperature2 = 80;
+				if (cur_temperature2 > 212)		// boiling!
+					cur_temperature2 = 212;
+			}
+
+			if (!cur_comp_rpm && cur_temperature1>ON_TEMPERATURE)
+				cur_comp_rpm = 2500;
+			if (cur_comp_rpm && cur_temperature1<OFF_TEMPERATURE)
+				cur_comp_rpm = 0;
+			cur_mech_therm = cur_temperature1 > MECH_TEMPERATURE ? 1 : 0;
+
+
+			float tdelta1 = random(100);
+			tdelta1 /= 500;		// 0 - 0.20
+			tdelta1 += 0.1;		// 0.1 - 0.30
+			if (cur_comp_rpm)
+				tdelta1 = -tdelta1;
+			temp1_delta += tdelta1;
+			if (temp1_delta > 2.0)
+				temp1_delta = 2.0;
+			if (temp1_delta < -2.0)
+				temp1_delta = -2.0;
+
+			if (cur_comp_rpm && temp2_delta < 0)
+				temp2_delta = 0;
+			if (!cur_comp_rpm && temp2_delta > 0)
+				temp2_delta = 0;
+				
+			float tdelta2 = random(100);
+			tdelta2 /= 500;		// 0 - 0.20
+			tdelta2 += 0.1;		// 0.1 - 0.30
+			if (!cur_comp_rpm)
+				tdelta2 = -tdelta2;
+			temp2_delta += tdelta2;
+			if (temp2_delta > 2.0)
+				temp2_delta = 2.0;
+			if (temp2_delta < -2.0)
+				temp2_delta = -2.0;
+
+		#endif	// !WITH_TSENSE
+
+
+		LOGD("TSENSE temp1=%0.3fF temp2=%0.3fF  mech=%d  rpm=%d",cur_temperature1,cur_temperature2,cur_mech_therm,cur_comp_rpm);
+
+		// I'm about to write my own chart plotter ...
+		// for better or worse, to use jqplot and provide clarity, we have to massage the data
+		// and/or provide fixed ranges
+
+
+		#if WITH_DATA_LOG
+			// data logging should probably be moved to loop()
+			fridgeLog_t log_rec;
+			log_rec.dt = time(NULL);
+			log_rec.temp1 = cur_temperature1;
+			log_rec.temp2 = cur_temperature2;
+			log_rec.mech  = cur_mech_therm;
+			log_rec.rpm   = cur_comp_rpm;
+			data_log.addRecord((logRecord_t) &log_rec);
+		#endif
+
+		#if WITH_TSENSE
 			// takes a a little over 2ms
-			// error already reported, but might want to know it for some reason
-		}
+			int err = t_sense.measure();
+		#endif
 	}
 
-#endif	// WITH_TSENSE
 
 	//--------------------------------------
 	// test compressor speed
 	//--------------------------------------
 
-#if TEST_COMPRESSOR_SPEED
+#if WITH_PWM && TEST_COMPRESSOR_SPEED
 
 	static uint32_t last_test;
 	if (now - last_test > 50)
@@ -322,19 +452,30 @@ void Fridge::loop()
 	// handle UI
 
 	ui_buttons.loop();
-	
 
 	// publish changed values from sensors
+	// round temperatures to 0.1 degrees
 
-	int i_temp = (degreesF * 10);
-	float f_temp = ((float)i_temp) / 10.0;
+	int itemp1 = (cur_temperature1 * 10);
+	float ftemp1 = ((float)itemp1) / 10.0;
+	if (_temperature1 != ftemp1)
+		setFloat(ID_TEMPERATURE_1,ftemp1);
 
-	if (_temperature1 != f_temp)
-		setFloat(ID_TEMPERATURE_1,f_temp);
+	int itemp2 = (cur_temperature2 * 10);
+	float ftemp2 = ((float)itemp2) / 10.0;
+	if (_temperature2 != ftemp2)
+		setFloat(ID_TEMPERATURE_2,ftemp2);
 
+#if WITH_TSENSE
 	int terr = t_sense.getLastError();
 	if (_temp_error != terr)
 		setInt(ID_TEMP_ERROR,terr);
+#endif
+
+	if (_mech_therm != cur_mech_therm)
+		setBool(ID_MECH_THERM,cur_mech_therm);
+	if (_comp_rpm != cur_comp_rpm)
+		setInt(ID_COMP_RPM,cur_comp_rpm);
 
 	if (_inv_error != v_sense._error_code)
 		setInt(ID_INV_ERROR,v_sense._error_code);
@@ -344,63 +485,29 @@ void Fridge::loop()
 		setInt(ID_INV_FAN,v_sense._fan_on);
 	if (_inv_error != v_sense._compress_on)
 		setInt(ID_INV_COMPRESS,v_sense._compress_on);
-
 }
 
 
 
 //----------------------------------------
-// graphing experiments
+// chart API
 //----------------------------------------
-
-// #include <stdio.h>
-
-static String getTemperatureJson()
-{
-	String rslt = "{";
-
-	struct timeval tv_now;
-	gettimeofday(&tv_now, NULL);
-	String tm = timeToString(tv_now.tv_sec);	// time(NULL));
-
-	rslt += "\"time\":\"" + tm + "\",";
-	rslt += "\"series\":[[";
-
-	int num = 0;
-	if (plot_circ)
-	{
-		int start = plot_head;
-		while (start<MAX_TEMP_POINTS)
-		{
-			if (num)
-				rslt += ",";
-			rslt += "[" + String(num++) + "," + String(plot_temps[start++]) + "]";
-		}
-	}
-
-	for (int i=0; i<plot_head; i++)
-	{
-		if (num)
-			rslt += ",";
-		rslt += "[" + String(num++) + "," + String(plot_temps[i]) + "]";
-	}
-	
-	rslt += "]]";
-	rslt += "}";
-	return rslt;
-}
-
-
 
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
     // called from myIOTHTTP.cpp::handleRequest()
 	// for any paths that start with /custom/
 {
-	if (path.startsWith("temp_data"))
-	{
-		*mime_type = "application/json";
-		return getTemperatureJson();
-	}
+	#if WITH_DATA_LOG
+		if (path.startsWith("chart_header"))
+		{
+			return data_log.getChartHeader();
+		}
+		else if (path.startsWith("chart_data"))
+		{
+			return data_log.sendChartData();
+		}
+	#endif
 
     return "";
 }
+

@@ -4,6 +4,9 @@
 	<!-- http://www.jqplot.com/ -->
 <script src="/jquery-3.6.0.min.js"></script>
 <script src="/spiffs/jquery.jqplot.min.js"></script>
+<script src="/spiffs/jqplot.dateAxisRenderer.js"></script>
+<script src="/spiffs/jqplot.cursor.js"></script>
+<script src="/spiffs/jqplot.highlighter.js"></script>
 <body>
 
 <div id="chartdiv" style="height:400px;width:800px; "></div>
@@ -14,45 +17,218 @@
 <input id="refresh_interval" type='number' value='10' min='0'>
 &nbsp;&nbsp;&nbsp;
 <span id="refresh_time"></span>
+<textarea id='info' rows='5' cols='180'></textarea>
+	
 
 
 <script>
 
 var plot;
-var options = {
-	title: "Refridgerator Temperature",
-	seriesDefaults: {
-		showMarker: false,
-	},
-};
+var chart_header;
 
 
-function update_chart()
+function do_the_plot(data,num_recs)
 {
-	$.ajax({
-		// have to use synchronous here, else the function
-		// will return before the data is fetched
-		async: false,
-		url: "/custom/temp_data",
-		dataType:"json",
-		success: function(data) {
-			document.querySelector("#refresh_time").innerHTML =
-				data.time;
-			if (plot)
-				plot.destroy();
-			plot = $.jqplot('chartdiv', data.series, options);
+	if (plot)
+		plot.destroy();
 
-			var refresh = document.querySelector("#refresh_interval");
-			if (refresh.value > 0)
-				setTimeout(update_chart,refresh.value * 1000);
+	var info = '';
+	
+	var col = chart_header.col;
+
+	var options = {
+
+		title: chart_header.name,
+		seriesDefaults: { showMarker: false, },
+
+		legend : {
+			show: true,
+			showLabels: true,
+			// labels: ['temp1','temp2','mech','rpm'],
+		},
+		series: [],
+		axes:{
+			xaxis:{
+				renderer:$.jqplot.DateAxisRenderer,
+				// tickOptions:{formatString:'%H:%M:%S'},
+				tickInterval:'1 minute'
+			},
+		},	// axes
+
+		cursor: {
+			zoom:true,
+			looseZoom: true,
+			showTooltip:true,
+			followMouse: true,
+			showTooltipOutsideZoom: true,
+			constrainOutsideZoom: false
+		},
+	};	// options
+
+
+	for (var i=0; i<chart_header.num_cols; i++)
+	{
+		var axis_name = 'y';
+		if (i>0) axis_name += (i+1);
+		axis_name += 'axis';
+
+		info += "col[" + i + "]" + col[i].name;
+		info += " min:" + col[i].min + " max:" + col[i].max;
+		info += "\n";
+
+		options.axes[ axis_name ] = {
+			pad: 1.2,
+			show: true,
+			label: col[i].name,
+			showLabel : false,	// true,
+			min: col[i].min,
+			max: col[i].max,
+			numberTicks: 9,
+		};
+		options.series[i] = {
+			label: col[i].name,
+			shadow : false,
+			lineWidth: 2,
+			// yaxis : axis_name,
+		};
+	}
+
+	// scale the values to the 0th axis
+
+	if (true && chart_header.num_cols > 1)
+	{
+		var global_min = col[0].min;
+		var global_max = col[0].max;
+		var global_range = global_max - global_min;
+
+		for (var i=1; i<chart_header.num_cols; i++)
+		{
+			var min = col[i].min;
+			var max = col[i].max;
+			var range = max - min;
+			for (var j=0; j<num_recs; j++)
+			{
+				var series = data[i];
+				var rec = series[j];
+				var val = rec[1];
+				val -= min;
+				val /= range;
+				val *= global_range;
+				val += global_min;
+				rec[1] = val;
+			}
 		}
-	});
+	}
+
+
+	document.getElementById("info").value = info;
+
+	plot = $.jqplot('chartdiv', data, options);
+
+	var refresh = document.querySelector("#refresh_interval");
+	if (refresh.value > 0)
+		setTimeout(update_chart,refresh.value * 1000);
+
 }
 
 
 
 
+function create_chart_data(abuffer)
+	// starts with a uin32_t for
+	// the number of records, followed by a number
+	// of records consisting of a timestamp followed
+	// by a nuumber of 32 bit fields of known types.
+
+{
+    const view = new DataView(abuffer);
+
+	var offset = 0;
+	const num_recs = view.getUint32(0, true);
+	offset += 4;
+
+	// console.log('num_recs:', num_recs);
+
+	var data = [];
+	for (var i=0; i<chart_header.num_cols; i++)
+	{
+		data[i] = [];
+	}
+
+	var col = chart_header.col;
+	for (var i=0; i<num_recs; i++)
+	{
+		// console.log('   rec[' + i + ']  offset(' + offset + ')');
+		const ts = view.getUint32(offset, true); // true for little-endian
+		offset += 4;
+
+		// debugging
+		// const dt = new Date(ts * 1000);
+		// console.log('      dt=' + dt);
+		
+		for (var j=0; j<chart_header.num_cols; j++)
+		{
+			var val;
+			const typ = col[j].type;
+			if (typ == 'float')
+				val = view.getFloat32(offset, true);
+			else if (typ == 'int32_t')
+				val = view.getInt32(offset, true);
+			else
+				val = view.getUint32(offset, true);
+			offset += 4;
+
+			// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
+
+			data[j].push([ ts * 1000, val]);
+		}
+	}
+
+	do_the_plot(data,num_recs);
+}
+
+
+
+
+function get_chart_data()
+{
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', '/custom/chart_data', true);
+	xhr.responseType = 'arraybuffer';
+	xhr.onload = function(e)
+	{
+		create_chart_data(this.response);
+	};
+
+	xhr.send();
+}
+
+
+
+function update_chart()
+{
+	var xhr_init = new XMLHttpRequest();
+	xhr_init.onreadystatechange = function()
+	{
+		if (this.readyState == 4 && this.status == 200)
+		{
+			chart_header = JSON.parse(this.responseText);
+			get_chart_data();
+		}
+    }
+	xhr_init.open('GET', '/custom/chart_header', true);
+	xhr_init.send();
+}
+
+
+
+
+
 $(document).ready(function() {
+	$.jqplot.config.enablePlugins = true;
+    // For these examples, don't show the to image button.
+    $.jqplot._noToImageButton = true;
+
 	update_chart();
 });
 

@@ -63,7 +63,11 @@
 // ids
 
 #define ID_TEMPERATURE_1           	"TEMPERATURE_1"
+#define ID_TEMPERATURE_2           	"TEMPERATURE_2"
 #define ID_TEMP_ERROR           	"TEMP_ERROR"
+
+#define ID_MECH_THERM				"MECH_THERM"
+#define ID_COMP_RPM					"COMP_RPM"
 
 #define ID_INV_ERROR           		"INV_ERROR"
 #define ID_INV_PLUS           		"INV_PLUS"
@@ -87,7 +91,11 @@ public:
     // values
 
 	static float	_temperature1;
+	static float	_temperature2;
 	static int		_temp_error;
+
+	static bool		_mech_therm;
+	static int		_comp_rpm;
 
 	static int		_inv_error;
 	static bool 	_inv_plus;
