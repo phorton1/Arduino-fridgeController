@@ -26,6 +26,53 @@
 var plot;
 var chart_header;
 
+function determineNumTicks()
+	// using the column tick_intervals and the raw min and max
+	// for each value, determine the number of ticks that will
+	// completely encapsulate the data, then go back and set
+	// the min and max of each column to the appropriate value.
+{
+	var num_ticks = 0;
+	for (var i=0; i<chart_header.num_cols; i++)
+	{
+		var col = chart_header.col[i];
+		var min = col.min;
+		var max = col.max;
+		var interval = col.tick_interval;
+
+		var low = Math.floor(parseInt(min/interval)) - 1;
+		var high = Math.ceil(parseInt(max/interval)) + 1;
+
+		var new_min = low * interval;
+		// var new_max = high * interval;
+
+		var ticks = high - low + 1;
+		if (ticks > num_ticks)
+			num_ticks = ticks;
+
+		// col['num_ticks'] = ticks;
+		col.min = new_min;
+		// col.max = new_max;
+	}
+
+	// now assign the max so that every one uses the same number of ticks
+
+	for (var i=0; i<chart_header.num_cols; i++)
+	{
+		var col = chart_header.col[i];
+		var min = col.min;
+		var interval = col.tick_interval;
+
+		var max = min + num_ticks * interval;
+		col.max = max;
+	}
+	
+	// return the number of ticks
+
+	return num_ticks + 1;
+}
+
+
 
 function do_the_plot(data,num_recs)
 {
@@ -35,6 +82,8 @@ function do_the_plot(data,num_recs)
 	var info = '';
 	
 	var col = chart_header.col;
+
+	var num_ticks = determineNumTicks();
 
 	var options = {
 
@@ -83,7 +132,7 @@ function do_the_plot(data,num_recs)
 			showLabel : false,	// true,
 			min: col[i].min,
 			max: col[i].max,
-			numberTicks: 9,
+			numberTicks: num_ticks, // col[i].num_ticks,	// chart_header.num_ticks,
 		};
 		options.series[i] = {
 			label: col[i].name,
@@ -135,11 +184,12 @@ function do_the_plot(data,num_recs)
 
 
 function create_chart_data(abuffer)
-	// starts with a uin32_t for
-	// the number of records, followed by a number
-	// of records consisting of a timestamp followed
-	// by a nuumber of 32 bit fields of known types.
-
+	// Decode the binary data into jqPlot compatible arrays of actual data.
+	// The binary starts with a uin32_t for the number of records, followed
+	// by that number of records consisting of a uint32 timestamp followed
+	// by a nuumber of 32 bit fields of specific types.
+	//
+	// As we do this we also set working min and max values on each column.
 {
     const view = new DataView(abuffer);
 
@@ -149,13 +199,16 @@ function create_chart_data(abuffer)
 
 	// console.log('num_recs:', num_recs);
 
+	var col = chart_header.col;
+
 	var data = [];
 	for (var i=0; i<chart_header.num_cols; i++)
 	{
 		data[i] = [];
+		col[i]['min'] = 0;
+		col[i]['max'] = 0;
 	}
 
-	var col = chart_header.col;
 	for (var i=0; i<num_recs; i++)
 	{
 		// console.log('   rec[' + i + ']  offset(' + offset + ')');
@@ -177,6 +230,17 @@ function create_chart_data(abuffer)
 			else
 				val = view.getUint32(offset, true);
 			offset += 4;
+
+			if (i == 0)
+			{
+				col[j].min = val;
+				col[j].max = val;
+			}
+			else
+			{
+				if (val < col[j].min) col[j].min = val;
+				if (val > col[j].max) col[j].max = val;
+			}
 
 			// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
 

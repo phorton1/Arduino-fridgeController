@@ -33,7 +33,7 @@
 
 	#include "dataLog.h"
 
-	#define NUM_LOG_MEM		400
+	#define NUM_LOG_MEM		200
 
 	typedef struct
 	{
@@ -44,14 +44,16 @@
 		uint32_t	rpm;
 	} fridgeLog_t;
 	
-	const logColumn_t  fridge_cols[] = {
-		{"temp1",	LOG_COL_TYPE_FLOAT,		-40,	40 },
-		{"temp2",	LOG_COL_TYPE_FLOAT,		60,		220 },
-		{"mech",	LOG_COL_TYPE_UINT32,	0,		2 },
-		{"rpm",		LOG_COL_TYPE_UINT32,	0,		4000 },
+	// The tick_intervals are 0 based and will be will be lined up
+
+	logColumn_t  fridge_cols[] = {
+		{"temp1",	LOG_COL_TYPE_FLOAT,		10,		},	// -40,	40 },
+		{"temp2",	LOG_COL_TYPE_FLOAT,		10,		},	// 60,		220 },
+		{"mech",	LOG_COL_TYPE_UINT32,	1,		},	// 0,		2 },
+		{"rpm",		LOG_COL_TYPE_UINT32,	500,	},	// 0,		4000 },
 	};
 
-	dataLog data_log("fridgeData",4,fridge_cols);
+	dataLog data_log("fridgeData",4,fridge_cols);	// ,9
 
 #endif	// WITH_DATA_LOG
 

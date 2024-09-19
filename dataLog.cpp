@@ -30,7 +30,7 @@
 dataLog::dataLog(
 		const char *name,
 		int num_cols,
-		const logColumn_t *cols ) :
+		logColumn_t *cols ) :
 	m_name(name),
 	m_num_cols(num_cols),
 	m_col(cols)
@@ -173,11 +173,9 @@ String dataLog::getChartHeader()
 			col->type == LOG_COL_TYPE_INT32 ? "int32_t" :
 			"uint32_t";
 
-		addJsonVal(rslt,"name",col->name,		true,true,false);
-		addJsonVal(rslt,"type",str,				true,true,false);
-		addJsonVal(rslt,"min",String(col->min),	false,true,false);
-		addJsonVal(rslt,"max",String(col->max),	false,false,false);
-
+		addJsonVal(rslt,"name",col->name,							true,true,false);
+		addJsonVal(rslt,"type",str,									true,true,false);
+		addJsonVal(rslt,"tick_interval",String(col->tick_interval),	false,false,true);
 		rslt += "}\n";
 	}
 	rslt += "]\n";
