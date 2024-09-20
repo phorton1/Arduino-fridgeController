@@ -11,8 +11,15 @@
 #include "uiScreen.h"
 #include "uiButtons.h"
 #include <myIOTLog.h>
+#include <myIOTWebServer.h>
+
+
+#define DEBUG_TSENSE	0
+
 
 #define TEMP_INTERVAL		3000
+#define FLUSH_INTERVAL		20000
+#define NUM_SD_RECORDS		10
 
 
 #if WITH_TSENSE
@@ -33,11 +40,8 @@
 
 	#include "dataLog.h"
 
-	#define NUM_LOG_MEM		200
-
 	typedef struct
 	{
-		uint32_t 	dt;
 		float		temp1;
 		float		temp2;
 		uint32_t	mech;
@@ -54,6 +58,8 @@
 	};
 
 	dataLog data_log("fridgeData",4,fridge_cols);	// ,9
+	bool data_log_inited = 0;
+
 
 #endif	// WITH_DATA_LOG
 
@@ -165,10 +171,6 @@ void Fridge::setup()
 	ui_buttons.init();
 	v_sense.init();
 
-#if WITH_DATA_LOG
-	data_log.init(NUM_LOG_MEM);
-#endif
-
 #if WITH_PWM
 	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
 	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
@@ -201,6 +203,14 @@ void Fridge::setup()
 			ui_screen.displayLine(1,"WIFI ERROR");
 	}
 
+#if WITH_DATA_LOG
+	data_log_inited = data_log.init(NUM_SD_RECORDS);
+	if (!data_log_inited)
+	{
+		delay(2000);
+		ui_screen.displayLine(0,"dataLog ERROR!!");
+	}
+#endif
 
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
@@ -305,8 +315,10 @@ void Fridge::stateMachine()
 			}
 			else
 			{
-				LOGD("    delta1=%0.3fF delta2=%0.3fF",temp1_delta,temp2_delta);
-
+				#if DEBUG_TSENSE>1
+					LOGD("   delta1=%0.3fF delta2=%0.3fF",temp1_delta,temp2_delta);
+				#endif
+				
 				cur_temperature1 += temp1_delta;
 				if (cur_temperature1 > 80)		// ambient
 					cur_temperature1 = 80;
@@ -319,11 +331,10 @@ void Fridge::stateMachine()
 			}
 
 			if (!cur_comp_rpm && cur_temperature1>ON_TEMPERATURE)
-				cur_comp_rpm = 2500;
+				cur_comp_rpm = 2400;	// better for graphing
 			if (cur_comp_rpm && cur_temperature1<OFF_TEMPERATURE)
 				cur_comp_rpm = 0;
 			cur_mech_therm = cur_temperature1 > MECH_TEMPERATURE ? 1 : 0;
-
 
 			float tdelta1 = random(100);
 			tdelta1 /= 500;		// 0 - 0.20
@@ -354,23 +365,33 @@ void Fridge::stateMachine()
 
 		#endif	// !WITH_TSENSE
 
-
-		LOGD("TSENSE temp1=%0.3fF temp2=%0.3fF  mech=%d  rpm=%d",cur_temperature1,cur_temperature2,cur_mech_therm,cur_comp_rpm);
-
-		// I'm about to write my own chart plotter ...
-		// for better or worse, to use jqplot and provide clarity, we have to massage the data
-		// and/or provide fixed ranges
-
+		#if DEBUG_TSENSE
+			LOGD("TSENSE temp1=%0.3fF temp2=%0.3fF  mech=%d  rpm=%d",cur_temperature1,cur_temperature2,cur_mech_therm,cur_comp_rpm);
+		#endif
 
 		#if WITH_DATA_LOG
-			// data logging should probably be moved to loop()
-			fridgeLog_t log_rec;
-			log_rec.dt = time(NULL);
-			log_rec.temp1 = cur_temperature1;
-			log_rec.temp2 = cur_temperature2;
-			log_rec.mech  = cur_mech_therm;
-			log_rec.rpm   = cur_comp_rpm;
-			data_log.addRecord((logRecord_t) &log_rec);
+			if (data_log_inited)
+			{
+				fridgeLog_t log_rec;
+				log_rec.temp1 = cur_temperature1;
+				log_rec.temp2 = cur_temperature2;
+				log_rec.mech  = cur_mech_therm;
+				log_rec.rpm   = cur_comp_rpm;
+				data_log_inited = data_log.addRecord((logRecord_t) &log_rec);
+
+				// turns out that having flush in loop() does
+				// not work well with webserver ... it's the opposite
+				// of what I would like as I though of loop() as a good
+				// place to do slow stuff.  Perhaps it is only that it
+				// does CORE(ARDUINO) STUFF ..
+
+				static uint32_t last_flush = 0;
+				if (data_log_inited && now-last_flush > FLUSH_INTERVAL)
+				{
+					last_flush = now;
+					data_log_inited = data_log.flushToSD();
+				}
+			}
 		#endif
 
 		#if WITH_TSENSE
@@ -506,7 +527,24 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 		}
 		else if (path.startsWith("chart_data"))
 		{
-			return data_log.sendChartData();
+			// query includes secs=N containing the number of seconds of chart data
+			// to send, that we convert into a number of records  vis-a-vis our
+			// sampling rate.  Not perfect, but close enough.
+			
+			uint32_t num_recs = 0;
+			String secs_arg = myiot_web_server->arg("secs");
+			if (secs_arg != "")
+			{
+				int secs = secs_arg.toInt();
+				if (secs > 0)
+				{
+					num_recs = 1 + (secs * 1000) / TEMP_INTERVAL;
+					#if 1
+						LOGD("    getting secs(%d) == num_recs(%d)",secs,num_recs);
+					#endif
+				}
+			}
+			return data_log.sendChartData(num_recs);
 		}
 	#endif
 

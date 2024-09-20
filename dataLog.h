@@ -38,7 +38,13 @@
 
 #pragma once
 
-#include <Arduino.h>
+#include <myIOTTypes.h>
+#include <SD.h>
+
+#if !WITH_SD
+	#error dataLog requires myIOT define WITH_SD=1 !!
+#endif
+
 
 
 #define LOG_COL_TYPE_UINT32		0x00000001
@@ -70,51 +76,63 @@ public:
 		const char *name,
 		int num_cols,
 		logColumn_t *cols );
+	bool init(int num_mem_recs = 10);
+		// Will report an error and return false
+		// if there is no SD Card.  The size of the
+		// memory queue is determined by the application
+		// based on it's likely addRecord:flushToSD() ratio,
+		// where 10 is a good default.
 
-	int getRecordSize()  			{ return m_rec_size; }
-	int getNumRecords()  			{ return m_num_recs; }
-
-	// the following implement the current
-	// temporary circ buffer implementation
-
-	void init(int num_mem_recs);
-	void addRecord(const logRecord_t rec);
-	const logRecord_t getRecord(int i);
+	bool addRecord(const logRecord_t rec);
+		// Quickly add a record to a in-memory queue to be
+		// written to the SD Card later.  The queue can
+		// hold a limited number of records before
+		// flushToSD() must be called.  Will report an error
+		// and return false if there is a buffer overflow.
+		// Will report an error an return false if the timestamp
+		// at the front of the record is not a valid current time,
+		// to prevent writing 1970 log records.
+		// Typically called from myIOTDevice's stateMachine task.
+	bool flushToSD();
+		// Flush the in-memory queue (Slow) to the SD card.
+		// Will NOT block calls to addRecord().
+		// Will be added to myIOTDevice::loop() at some point.
+		// Currently called from myIOTDevice's loop() method
+		// BEFORE it calls myIOTDevice::loop() so that sendChartData()
+		// works entire from the SD card.
 
 	// myIOTWebServer interface
-	// Called from Fridge::onCustomLink()
+	// Called from the myIOTDevice's onCustomLink()
 
 	String getChartHeader();
 		// returns a String containing the json used to create a chart
-	String sendChartData();
+	String sendChartData(uint32_t num_recs);
 		// sends the chart data to the myiot_web_server and returns
-		// RESPONSE_HANDLED
+		// RESPONSE_HANDLED. num_recent_recs is determined by the
+		// the client and their logging rate, where 0 means "all"
 
 
 private:
 
 	const char *m_name;
-
-	// note that the following members MUST
-	// pack equivilantly to a logHeader_t record
-
 	int m_num_cols;
 	int m_rec_size;
 	logColumn_t *m_col;
 
-	// temporary implementation
+	// in-memory queue
 
-	int m_head;
-	int m_tail;
-	int m_num_recs;
 	int m_num_alloc;
 	uint8_t *m_rec_buffer;
+	volatile int m_head;
+	volatile int m_tail;
 
-	logRecord_t m_rec(int i)
-		// the raw ith recorfd in the m_rec_buffer
+	logRecord_t mem_rec(int i)
 	{
 		return (logRecord_t) &m_rec_buffer[i * m_rec_size];
 	}
 	
+	String dataFilename();
+	bool writeSDRecs(File &file, const char *what, int at, int num_recs);
+
 
 };

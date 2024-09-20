@@ -7,24 +7,51 @@
 <script src="/spiffs/jqplot.dateAxisRenderer.js"></script>
 <script src="/spiffs/jqplot.cursor.js"></script>
 <script src="/spiffs/jqplot.highlighter.js"></script>
+<!-- jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js -->
+<!-- cuz spiff max filename length -->
+<script src="/spiffs/jqplot.legendRenderer.js"></script>
 <body>
 
 <div id="chartdiv" style="height:400px;width:800px; "></div>
 
-<button onclick="update_chart()">update_chart</button>
+<button onclick="get_chart_data()">update_chart</button>
 &nbsp;&nbsp;&nbsp;
+
 <label for="refresh_interval">Refresh Interval:</label>
-<input id="refresh_interval" type='number' value='10' min='0'>
+<input id="refresh_interval" type='number' value='0' min='0'>
+
 &nbsp;&nbsp;&nbsp;
-<span id="refresh_time"></span>
-<textarea id='info' rows='5' cols='180'></textarea>
+
+<label for="chart_period">Chart Period:</label>
+<select name="period" id="chart_period" onchange="get_chart_data()">
+	<option value="0">All</option>
+	<option value="60">Minute</option>
+	<option value="900">15 Minutes</option>
+	<option value="3600" selected="selected">Hour</option>
+	<option value="10800">3 Hours</option>
+	<option value="43200">12 Hours</option>
+	<option value="86400">Day</option>
+	<option value="172800">2 Days</option>
+	<option value="259200">3 Days</option>
+	<option value="604800">Week</option>
+	<option value="2592000">Month</option>
+	<option value="5184000">2 Months</option>
+	<option value="7776000">3 Months</option>
+	<option value="31536000">Year</option>
+</select>
+<br>
+<textarea id='info' rows='5' cols='80'></textarea>
 	
 
 
 <script>
 
+const use_zoom = true;
+
+
 var plot;
 var chart_header;
+var refresh_timer;
 
 function determineNumTicks()
 	// using the column tick_intervals and the raw min and max
@@ -40,13 +67,13 @@ function determineNumTicks()
 		var max = col.max;
 		var interval = col.tick_interval;
 
-		var low = Math.floor(parseInt(min/interval)) - 1;
-		var high = Math.ceil(parseInt(max/interval)) + 1;
+		var low = Math.floor(parseInt((min-interval+1) /interval));
+		var high = Math.ceil(parseInt((max+interval-1) /interval));
 
 		var new_min = low * interval;
 		// var new_max = high * interval;
 
-		var ticks = high - low + 1;
+		var ticks = high - low;
 		if (ticks > num_ticks)
 			num_ticks = ticks;
 
@@ -74,15 +101,20 @@ function determineNumTicks()
 
 
 
-function do_the_plot(data,num_recs)
+function do_the_plot(data,num_recs,secs)
 {
 	if (plot)
 		plot.destroy();
 
-	var info = '';
-	
-	var col = chart_header.col;
+	// many of these options will end up being application specific.
+	// I'm not sure to what degree I want to have each app know about
+	// jqplot. They currently don't know much (only that 2400 is better
+	// for charting rpms than 2500), but I can see a case, especially
+	// with the notion of app specific "widgets", for the apps to becom
+	// much more aware of jqplot, and for that matter, bootstrap and jq.
 
+	var info = '';
+	var col = chart_header.col;
 	var num_ticks = determineNumTicks();
 
 	var options = {
@@ -91,28 +123,43 @@ function do_the_plot(data,num_recs)
 		seriesDefaults: { showMarker: false, },
 
 		legend : {
+			renderer: $.jqplot.EnhancedLegendRenderer,
 			show: true,
 			showLabels: true,
-			// labels: ['temp1','temp2','mech','rpm'],
+			rendererOptions: {
+				numberRows: 1,
+
+				// not useful as I set the chart ticks
+				// would need to do more sophisticated
+				// stuff to get the idea that we redraw
+				// the chart when a series comes or goes.
+				//
+				// seriesToggleReplot: true,
+			},
 		},
 		series: [],
 		axes:{
 			xaxis:{
 				renderer:$.jqplot.DateAxisRenderer,
+				// jqplot does a good job of handling the time axis
 				// tickOptions:{formatString:'%H:%M:%S'},
-				tickInterval:'1 minute'
+				// tickInterval: secsToInterval(secs),
 			},
 		},	// axes
+	};	// options
 
-		cursor: {
+
+	if (use_zoom)
+	{
+		options['cursor'] = {
 			zoom:true,
 			looseZoom: true,
 			showTooltip:true,
 			followMouse: true,
 			showTooltipOutsideZoom: true,
 			constrainOutsideZoom: false
-		},
-	};	// options
+		};
+	}
 
 
 	for (var i=0; i<chart_header.num_cols; i++)
@@ -174,16 +221,42 @@ function do_the_plot(data,num_recs)
 
 	plot = $.jqplot('chartdiv', data, options);
 
+	// reverse the order of the canvasas so that
+	// the most important one (zero=temperature1)
+	// is on top.
+
+	for (var i=chart_header.num_cols-1; i>=0; i--)
+	{
+		plot.moveSeriesToFront(i);
+	}
+
+
+	// add a click handler to the enhancedLegendRenderer
+	// legend swatches so that when a series is made
+	// visible it is moved to the top, so toggling
+	// them on and off effectively lets the user set
+	// the z-order ..
+	
+	var i=0;
+	$('td.jqplot-table-legend-swatch').each(function(){
+		$(this).bind('click',{index:i},function(ev){
+			var index = ev.data.index;
+			// alert("toggle " + index);
+			plot.moveSeriesToFront(index);
+		});
+		i++;
+	});
+
 	var refresh = document.querySelector("#refresh_interval");
 	if (refresh.value > 0)
-		setTimeout(update_chart,refresh.value * 1000);
+		refresh_timer = setTimeout(get_chart_data,refresh.value * 1000);
 
 }
 
 
 
 
-function create_chart_data(abuffer)
+function create_chart_data(abuffer,secs)
 	// Decode the binary data into jqPlot compatible arrays of actual data.
 	// The binary starts with a uin32_t for the number of records, followed
 	// by that number of records consisting of a uint32 timestamp followed
@@ -196,6 +269,9 @@ function create_chart_data(abuffer)
 	var offset = 0;
 	const num_recs = view.getUint32(0, true);
 	offset += 4;
+
+	var min_time;
+	var max_time;
 
 	// console.log('num_recs:', num_recs);
 
@@ -214,6 +290,20 @@ function create_chart_data(abuffer)
 		// console.log('   rec[' + i + ']  offset(' + offset + ')');
 		const ts = view.getUint32(offset, true); // true for little-endian
 		offset += 4;
+
+		if (i == 0)
+		{
+			min_time = ts;
+			max_time = ts;
+		}
+		else
+		{
+			if (ts < min_time)
+				min_time = min_time;
+			if (ts > max_time)
+				max_time = ts;
+		}
+
 
 		// debugging
 		// const dt = new Date(ts * 1000);
@@ -248,7 +338,7 @@ function create_chart_data(abuffer)
 		}
 	}
 
-	do_the_plot(data,num_recs);
+	do_the_plot(data,num_recs,max_time-min_time);
 }
 
 
@@ -256,8 +346,12 @@ function create_chart_data(abuffer)
 
 function get_chart_data()
 {
+	clearTimeout(refresh_timer);
+	
+	var secs = document.getElementById("chart_period").value;
+
 	var xhr = new XMLHttpRequest();
-	xhr.open('GET', '/custom/chart_data', true);
+	xhr.open('GET', '/custom/chart_data?secs=' + secs, true);
 	xhr.responseType = 'arraybuffer';
 	xhr.onload = function(e)
 	{
