@@ -44,13 +44,15 @@ The documentation of the fridgeController is broken up into several pages:
 
 ## B. Design Overview
 
-Physically, I have decided to break the design into two parts.
+Physically, I have decided to break the physical design into two
+circuits.  Each parts will have a PCB and a 3D printed box..
 
 The first part is the **miniBox** which is relatively simple, and
 which will sit atop the inverter in a 3D printed enclosure.  The
 second part will be the more complicated ESP32 based **Controller**
 which will live in a kitchen cabinet and have an external WS2812b
 LED.
+
 
 ### miniBox
 
@@ -97,7 +99,7 @@ inverter.
 
 The Controller sits in a cabinet out of view.
 It is based on an **ESP32** and has **WIFI Connectivity**
-It has the following connectors:
+The Controller has the following connectors:
 
 - a **2 pin JST connector** for the **12V power supply** input for the Controller.
 - a **6 pin JST connector** for the other 6 pins of the 8 pin cable
@@ -111,7 +113,7 @@ It has the following connectors:
   visual indication of the state of the refridgerator without
   needing to open the cabinet and look at the Controller.
 
-Initially the Controller will be powered by breaking the the BATT+ and
+Initially the Controller will be powered by breaking the BATT+ and
 BATT- wires of the 8 pin cable from the miniBox into a separate 2 pin
 JST connector.  Later, if so desired, the Controller can be powered
 by a separate connection to the boat's batteries so that the Inverter
@@ -133,8 +135,6 @@ In addition, or perhaps primarily, though, it will have a
 **Web User Interface** that can be accessed from a phone,
 laptop, or other programs on the boat's LAN, and will function
 as a **myIOT** device.
-
-
 
 
 ## Please Also See
