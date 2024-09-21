@@ -38,7 +38,7 @@
 
 #if WITH_DATA_LOG
 
-	#include "dataLog.h"
+	#include <myIOTDataLog.h>
 
 	typedef struct
 	{
@@ -57,7 +57,7 @@
 		{"rpm",		LOG_COL_TYPE_UINT32,	500,	},	// 0,		4000 },
 	};
 
-	dataLog data_log("fridgeData",4,fridge_cols);	// ,9
+	myIOTDataLog data_log("fridgeData",4,fridge_cols);	// ,9
 	bool data_log_inited = 0;
 
 
