@@ -79,6 +79,7 @@ static valueIdType dash_items[] = {
 	ID_INV_PLUS,
 	ID_INV_FAN,
 	ID_INV_COMPRESS,
+	ID_CHART_LINK,
     0
 };
 
@@ -103,6 +104,9 @@ const valDescriptor Fridge::m_fridge_values[] =
 	{ID_INV_FAN,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_fan,         NULL,	{ .int_range	= {0,	0,		1}},	},
 	{ID_INV_COMPRESS,	VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_compress,    NULL,	{ .int_range	= {0,	0,		1}},	},
 
+   { ID_CHART_LINK,		VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &_chart_link,     },
+
+
 };
 
 #define NUM_FRIDGE_VALUES (sizeof(m_fridge_values)/sizeof(valDescriptor))
@@ -122,6 +126,7 @@ bool 	Fridge::_inv_plus;
 bool	Fridge::_inv_fan;
 bool	Fridge::_inv_compress;
 
+String	Fridge::_chart_link;
 
 Fridge *fridge;
 
@@ -210,6 +215,9 @@ void Fridge::setup()
 		delay(2000);
 		ui_screen.displayLine(0,"dataLog ERROR!!");
 	}
+    _chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
+    _chart_link += getUUID();
+    _chart_link += "' target='_blank'>Chart</a>";
 #endif
 
 	LOGI("starting stateTask");
@@ -523,6 +531,7 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 	#if WITH_DATA_LOG
 		if (path.startsWith("chart_header"))
 		{
+			*mime_type = "application/json";
 			return data_log.getChartHeader();
 		}
 		else if (path.startsWith("chart_data"))

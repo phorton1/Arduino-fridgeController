@@ -74,6 +74,7 @@
 #define ID_INV_FAN           		"INV_FAN"
 #define ID_INV_COMPRESS           	"INV_COMPRESS"
 
+#define ID_CHART_LINK     			"CHART_LINK"
 
 
 class Fridge : public myIOTDevice
@@ -101,6 +102,8 @@ public:
 	static bool 	_inv_plus;
 	static bool		_inv_fan;
 	static bool		_inv_compress;
+
+	 static String 	_chart_link;
 
 	// methods
 
