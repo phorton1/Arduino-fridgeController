@@ -1,15 +1,27 @@
 <head>
+
+<!--
+	files from '/spiffs/' are routed to / on the spiffs FS for local device
+	but require ?uuid= to be routed through the myIOTServer.
+
+	I have temporarily added the uuid of the current fridgeController ESP32
+	and a ?uuid= to every call to get it working, but another solution is
+	needed.
+-->
+
+
 <title>fridgeController Temperature Chart</title>
-<link href="/spiffs/jquery.jqplot.min.css" rel="stylesheet">
+<link href="/spiffs/jquery.jqplot.min.css?cache=1&uuid=%%UUID%%" rel="stylesheet">
 	<!-- http://www.jqplot.com/ -->
-<script src="/jquery-3.6.0.min.js"></script>
-<script src="/spiffs/jquery.jqplot.min.js"></script>
-<script src="/spiffs/jqplot.dateAxisRenderer.js"></script>
-<script src="/spiffs/jqplot.cursor.js"></script>
-<script src="/spiffs/jqplot.highlighter.js"></script>
+<script src="/spiffs/jquery-3.6.0.min.js?cache=1&uuid=%%UUID%%?"></script>
+	<!-- same on base device and myIOTServer/myIOT -->
+<script src="/spiffs/jquery.jqplot.min.js?cache=1&uuid=%%UUID%%"></script>
+<script src="/spiffs/jqplot.dateAxisRenderer.js?cache=1&uuid=%%UUID%%"></script>
+<script src="/spiffs/jqplot.cursor.js?cache=1&uuid=%%UUID%%"></script>
+<script src="/spiffs/jqplot.highlighter.js?cache=1&uuid=%%UUID%%"></script>
 <!-- jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js -->
 <!-- cuz spiff max filename length -->
-<script src="/spiffs/jqplot.legendRenderer.js"></script>
+<script src="/spiffs/jqplot.legendRenderer.js?cache=1&uuid=%%UUID%%"></script>
 <body>
 
 <div id="chartdiv" style="height:400px;width:800px; "></div>
@@ -39,8 +51,9 @@
 	<option value="7776000">3 Months</option>
 	<option value="31536000">Year</option>
 </select>
-<br>
-<textarea id='info' rows='5' cols='80'></textarea>
+
+<~-- br>
+<textarea id='info' rows='5' cols='80'></textarea -->
 	
 
 
@@ -113,7 +126,7 @@ function do_the_plot(data,num_recs,secs)
 	// with the notion of app specific "widgets", for the apps to becom
 	// much more aware of jqplot, and for that matter, bootstrap and jq.
 
-	var info = '';
+	// var info = '';
 	var col = chart_header.col;
 	var num_ticks = determineNumTicks();
 
@@ -168,9 +181,9 @@ function do_the_plot(data,num_recs,secs)
 		if (i>0) axis_name += (i+1);
 		axis_name += 'axis';
 
-		info += "col[" + i + "]" + col[i].name;
-		info += " min:" + col[i].min + " max:" + col[i].max;
-		info += "\n";
+		// info += "col[" + i + "]" + col[i].name;
+		// info += " min:" + col[i].min + " max:" + col[i].max;
+		// info += "\n";
 
 		options.axes[ axis_name ] = {
 			pad: 1.2,
@@ -217,7 +230,7 @@ function do_the_plot(data,num_recs,secs)
 	}
 
 
-	document.getElementById("info").value = info;
+	// document.getElementById("info").value = info;
 
 	plot = $.jqplot('chartdiv', data, options);
 
@@ -351,7 +364,7 @@ function get_chart_data()
 	var secs = document.getElementById("chart_period").value;
 
 	var xhr = new XMLHttpRequest();
-	xhr.open('GET', '/custom/chart_data?secs=' + secs, true);
+	xhr.open('GET', '/custom/chart_data?uuid=%%UUID%%&secs=' + secs, true);
 	xhr.responseType = 'arraybuffer';
 	xhr.onload = function(e)
 	{
@@ -374,7 +387,7 @@ function update_chart()
 			get_chart_data();
 		}
     }
-	xhr_init.open('GET', '/custom/chart_header', true);
+	xhr_init.open('GET', '/custom/chart_header?uuid=%%UUID%%', true);
 	xhr_init.send();
 }
 
