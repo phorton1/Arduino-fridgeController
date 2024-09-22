@@ -61,6 +61,26 @@
 	bool data_log_inited = 0;
 
 
+	// jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js
+	// because of ESP32 SPIFFS max filename length
+
+	const char *plot_deps = 
+		"/myIOT/jquery.jqplot.min.css?cache=1,"
+		"/myIOT/jquery.jqplot.min.js?cache=1,"
+		"/myIOT/jqplot.dateAxisRenderer.js?cache=1,"
+		"/myIOT/jqplot.cursor.js?cache=1,"
+		"/myIOT/jqplot.highlighter.js?cache=1,"
+		"/myIOT/jqplot.legendRenderer.js?cache=1,"
+		"/myIOT/iotPlot.js";
+
+	myIOTWidget_t fridgeWidget = {
+		"fridgeWidget",
+		plot_deps,
+		"doPlot('fridgeData')",
+		"stopPlot('fridgeData')",
+		NULL };
+		
+
 #endif	// WITH_DATA_LOG
 
 
@@ -215,9 +235,28 @@ void Fridge::setup()
 		delay(2000);
 		ui_screen.displayLine(0,"dataLog ERROR!!");
 	}
-    _chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
-    _chart_link += getUUID();
-    _chart_link += "' target='_blank'>Chart</a>";
+	else
+	{
+		// on the stack
+		String html = data_log.getChartHTML(
+			300,		// height
+			600,		// width
+			3600,		// default period for the chart
+			0 );		// default refresh interval
+
+		#if 0
+			Serial.print("html=");
+			Serial.println(html.c_str());
+		#endif
+
+		// move to the heap
+		fridgeWidget.html = new String(html);
+		setDeviceWidget(&fridgeWidget);
+
+		_chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
+		_chart_link += getUUID();
+		_chart_link += "' target='_blank'>Chart</a>";
+	}
 #endif
 
 	LOGI("starting stateTask");
@@ -524,34 +563,52 @@ void Fridge::loop()
 // chart API
 //----------------------------------------
 
+int getArg(const char *name, int def_value)
+{
+	String arg = myiot_web_server->arg(name);
+	if (arg != "")
+		return arg.toInt();
+	return def_value;
+}
+
+
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
     // called from myIOTHTTP.cpp::handleRequest()
 	// for any paths that start with /custom/
 {
 	#if WITH_DATA_LOG
-		if (path.startsWith("chart_header"))
+
+		// LOGI("Fridge::onCustomLink(%s)",path.c_str());
+		if (path.startsWith("chart_html/fridgeData"))
+		{
+			// only used by temp_chart.html inasmuch as the
+			// chart html is baked into the myIOT widget
+			
+			int height = getArg("height",400);
+			int width  = getArg("width",800);
+			int period = getArg("period",3600);
+			int refresh = getArg("refresh",0);
+			return data_log.getChartHTML(height,width,period,refresh);
+		}
+		else if (path.startsWith("chart_header/fridgeData"))
 		{
 			*mime_type = "application/json";
 			return data_log.getChartHeader();
 		}
-		else if (path.startsWith("chart_data"))
+		else if (path.startsWith("chart_data/fridgeData"))
 		{
 			// query includes secs=N containing the number of seconds of chart data
-			// to send, that we convert into a number of records  vis-a-vis our
-			// sampling rate.  Not perfect, but close enough.
+			// to send, that that only we can convert into a number of records
+			// using our known sampling rate.  Not perfect, but close enough.
 			
-			uint32_t num_recs = 0;
-			String secs_arg = myiot_web_server->arg("secs");
-			if (secs_arg != "")
+			int num_recs = 0;
+			int secs = getArg("secs",0);
+			if (secs > 0)
 			{
-				int secs = secs_arg.toInt();
-				if (secs > 0)
-				{
-					num_recs = 1 + (secs * 1000) / TEMP_INTERVAL;
-					#if 1
-						LOGD("    getting secs(%d) == num_recs(%d)",secs,num_recs);
-					#endif
-				}
+				num_recs = 1 + (secs * 1000) / TEMP_INTERVAL;
+				#if 1
+					LOGD("    getting secs(%d) == num_recs(%d)",secs,num_recs);
+				#endif
 			}
 			return data_log.sendChartData(num_recs);
 		}
@@ -559,4 +616,5 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 
     return "";
 }
+
 

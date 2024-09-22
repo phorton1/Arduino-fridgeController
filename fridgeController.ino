@@ -74,16 +74,6 @@
 //--------------------------------
 
 
-const char *FRIDGE_WIDGET =
-	"<div id='chart_div' style='height:400px;width:800px;'></div>\n"
-	"Fridge <button onclick=\"plotButtonHandler("
-	"'fridgeControllerPlot',"
-	"'chart_div',"
-	"'/custom/chart_header',"
-	"'/custom/chart_data'"
-	")\">PLOT</button>";
-
-
 void setup()
 {
     Serial.begin(MY_IOT_ESP32_CORE == 3 ? 115200 : 921600);
@@ -92,7 +82,6 @@ void setup()
     Fridge::setDeviceType(FRIDGE_CONTROLLER);
     Fridge::setDeviceVersion(FRIDGE_CONTROLLER_VERSION);
     Fridge::setDeviceUrl(FRIDGE_CONTROLLER_URL);
-	Fridge::setDeviceWidget(FRIDGE_WIDGET);
 
     LOGU("");
     LOGU("fridgeController.ino setup() started on core(%d)",xPortGetCoreID());
