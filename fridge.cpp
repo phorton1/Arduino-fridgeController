@@ -71,13 +71,13 @@
 		"/myIOT/jqplot.cursor.js?cache=1,"
 		"/myIOT/jqplot.highlighter.js?cache=1,"
 		"/myIOT/jqplot.legendRenderer.js?cache=1,"
-		"/myIOT/iotPlot.js";
+		"/myIOT/iotChart.js";
 
 	myIOTWidget_t fridgeWidget = {
 		"fridgeWidget",
 		plot_deps,
-		"doPlot('fridgeData')",
-		"stopPlot('fridgeData')",
+		"doChart('fridgeData')",
+		"stopChart('fridgeData')",
 		NULL };
 		
 

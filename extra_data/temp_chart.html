@@ -9,7 +9,7 @@
 <script src="/myIOT/jqplot.highlighter.js?cache=1"></script>
 <script src="/myIOT/jqplot.legendRenderer.js?cache=1"></script>
 <script src="/myIOT/jqplot.legendRenderer.js?cache=1"></script>
-<script src="/myIOT/iotPlot.js"></script>
+<script src="/myIOT/iotChart.js"></script>
 
 <body>
 <div id='widget_content'></div>
@@ -24,7 +24,7 @@
 			{
 				var ele = document.getElementById('widget_content');
 				ele.innerHTML = this.responseText;
-				doPlot('fridgeData');
+				doChart('fridgeData');
 			}
 		}
 		xhr_html.open('GET', '/custom/chart_html/fridgeData?width=800&height=400&refresh=10', true);
