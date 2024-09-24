@@ -22,6 +22,8 @@
 #include "fridge.h"
 #include <myIOTLog.h>
 
+#define PLOT_VALUES  1
+
 // structure
 
 #define SAMPLE_PLUS		0
@@ -110,6 +112,15 @@ static void doRead(int i, int pin)
 }
 
 
+static void normalize400(int value, bool comma)
+{
+	float normal = (value * 400) / 4096;
+	String rslt = String(normal);
+	if (comma) rslt += ",";
+
+}
+
+
 
 void vSense::sense()
 	// important to only call every 50ms or so
@@ -128,13 +139,61 @@ void vSense::sense()
 		ptr = 0;
 
 	#if PLOT_VALUES
-		Serial.print(val[0]);
-		Serial.print(",");
-		Serial.print(val[1]);
-		Serial.print(",");
-		Serial.print(val[2]);
-		Serial.println();
+
+		#define TEST_VALUES 1
+		#define SMALL_TEST  0
+
+		#if TEST_VALUES
+			static float test_values[3] = {20,20,20};
+			float use_values[3];
+
+			for (int i=0; i<3; i++)
+			{
+				// for testing plotter we allow negative numbers
+				// and can try really small numbers
+				test_values[i] += random(5) - 2;
+				
+				if (test_values[i] >= 4095)
+					test_values[i] = 4095;
+				if (test_values[i] < -4096)
+					test_values[i] = -4096;
+				use_values[i] = test_values[i];
+				#if SMALL_TEST
+					use_values[i] /= 100000;
+				#endif
+
+			}
+		#endif
+
+		if (fridge->_plot_data)
+		{
+			static char plot_buf[120];
+
+			#if TEST_VALUES	// test floats
+				sprintf(plot_buf,"{\"plot_data\":[%0.5f,%0.5f,%0.5f]}",
+					use_values[0],
+					use_values[1],
+					use_values[2]);
+
+			#else	// real integers
+				sprintf(plot_buf,"{\"plot_data\":[%d,%d,%d]}",
+					val[0],
+					val[1],
+					val[2]);
+			#endif
+
+			// LOGD("Sending plot_buf(%s)",plot_buf);
+
+			// I am concerned with broadcasting to WS
+			// in the time-critical Fridge::stateMachine(),
+			// much as I am concerned about data logging
+			// from that task.
+			
+			fridge->wsBroadcast(plot_buf);
+		}
+
 	#endif
+	
 
 	static bool diode_on;
 	static int flash_count;

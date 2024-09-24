@@ -305,7 +305,7 @@ void Fridge::stateMachine()
 	//--------------------------------
 
 	static uint32_t last_vsense = 0;
-	if (now - last_vsense >= 50)
+	if (now - last_vsense >= 20)
 	{
 		last_vsense = now;
 		v_sense.sense();

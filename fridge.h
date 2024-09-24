@@ -10,7 +10,6 @@
 
 // global debugging defines
 
-#define PLOT_VALUES 		0		// to output only vSense integers for Arduino plotter
 #define TEMP_BREADBOARD		0
 
 //=========================================================
@@ -110,9 +109,11 @@ public:
 	void stateMachine();
 	static void stateTask(void *param);
 
-	// experiments
+	// extensions
 	
 	String onCustomLink(const String &path,  const char **mime_type) override;
+    virtual bool hasPlot() override    { return true; }
+
 
 };
 
