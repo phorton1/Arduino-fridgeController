@@ -259,6 +259,9 @@ void Fridge::setup()
 	}
 #endif
 
+	setPlotLegend("batt,fan,diode");
+		// see vSense.cpp
+
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
         "stateTask",

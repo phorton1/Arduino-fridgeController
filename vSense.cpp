@@ -22,8 +22,6 @@
 #include "fridge.h"
 #include <myIOTLog.h>
 
-#define PLOT_VALUES  1
-
 // structure
 
 #define SAMPLE_PLUS		0
@@ -138,7 +136,7 @@ void vSense::sense()
 	if (ptr >= NUM_SAMPLES)
 		ptr = 0;
 
-	#if PLOT_VALUES
+	#if WITH_WS
 
 		#define TEST_VALUES 1
 		#define SMALL_TEST  0
@@ -192,7 +190,7 @@ void vSense::sense()
 			fridge->wsBroadcast(plot_buf);
 		}
 
-	#endif
+	#endif	// WITH_WS
 	
 
 	static bool diode_on;
