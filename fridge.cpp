@@ -600,20 +600,8 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 		}
 		else if (path.startsWith("chart_data/fridgeData"))
 		{
-			// query includes secs=N containing the number of seconds of chart data
-			// to send, that that only we can convert into a number of records
-			// using our known sampling rate.  Not perfect, but close enough.
-			
-			int num_recs = 0;
 			int secs = getArg("secs",0);
-			if (secs > 0)
-			{
-				num_recs = 1 + (secs * 1000) / TEMP_INTERVAL;
-				#if 1
-					LOGD("    getting secs(%d) == num_recs(%d)",secs,num_recs);
-				#endif
-			}
-			return data_log.sendChartData(num_recs);
+			return data_log.sendChartData(secs);
 		}
 	#endif
 
