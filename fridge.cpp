@@ -18,8 +18,6 @@
 
 
 #define TEMP_INTERVAL		3000
-#define FLUSH_INTERVAL		20000
-#define NUM_SD_RECORDS		10
 
 
 #if WITH_TSENSE
@@ -32,6 +30,7 @@
 #endif
 
 
+
 //-----------------------------------------------
 // data_log setup
 //-----------------------------------------------
@@ -42,6 +41,7 @@
 
 	typedef struct
 	{
+		uint32_t	dt;	// filled in by dataLog
 		float		temp1;
 		float		temp2;
 		uint32_t	mech;
@@ -51,20 +51,18 @@
 	// The tick_intervals are 0 based and will be will be lined up
 
 	logColumn_t  fridge_cols[] = {
-		{"temp1",	LOG_COL_TYPE_FLOAT,		10,		},	// -40,	40 },
-		{"temp2",	LOG_COL_TYPE_FLOAT,		10,		},	// 60,		220 },
-		{"mech",	LOG_COL_TYPE_UINT32,	1,		},	// 0,		2 },
-		{"rpm",		LOG_COL_TYPE_UINT32,	500,	},	// 0,		4000 },
+		{"temp1",	LOG_COL_TYPE_FLOAT,		10,		},
+		{"temp2",	LOG_COL_TYPE_FLOAT,		10,		},
+		{"mech",	LOG_COL_TYPE_UINT32,	1,		},
+		{"rpm",		LOG_COL_TYPE_UINT32,	500,	},
 	};
 
-	myIOTDataLog data_log("fridgeData",4,fridge_cols);	// ,9
-	bool data_log_inited = 0;
-
+	myIOTDataLog data_log("fridgeData",4,fridge_cols);
 
 	// jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js
 	// because of ESP32 SPIFFS max filename length
 
-	const char *plot_deps = 
+	const char *chart_deps =
 		"/myIOT/jquery.jqplot.min.css?cache=1,"
 		"/myIOT/jquery.jqplot.min.js?cache=1,"
 		"/myIOT/jqplot.dateAxisRenderer.js?cache=1,"
@@ -75,7 +73,7 @@
 
 	myIOTWidget_t fridgeWidget = {
 		"fridgeWidget",
-		plot_deps,
+		chart_deps,
 		"doChart('fridgeData')",
 		"stopChart('fridgeData')",
 		NULL };
@@ -229,34 +227,25 @@ void Fridge::setup()
 	}
 
 #if WITH_DATA_LOG
-	data_log_inited = data_log.init(NUM_SD_RECORDS);
-	if (!data_log_inited)
-	{
-		delay(2000);
-		ui_screen.displayLine(0,"dataLog ERROR!!");
-	}
-	else
-	{
-		// on the stack
-		String html = data_log.getChartHTML(
-			300,		// height
-			600,		// width
-			3600,		// default period for the chart
-			0 );		// default refresh interval
+	// on the stack
+	String html = data_log.getChartHTML(
+		300,		// height
+		600,		// width
+		3600,		// default period for the chart
+		0 );		// default refresh interval
 
-		#if 0
-			Serial.print("html=");
-			Serial.println(html.c_str());
-		#endif
+	#if 0
+		Serial.print("html=");
+		Serial.println(html.c_str());
+	#endif
 
-		// move to the heap
-		fridgeWidget.html = new String(html);
-		setDeviceWidget(&fridgeWidget);
+	// move to the heap
+	fridgeWidget.html = new String(html);
+	setDeviceWidget(&fridgeWidget);
 
-		_chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
-		_chart_link += getUUID();
-		_chart_link += "' target='_blank'>Chart</a>";
-	}
+	_chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
+	_chart_link += getUUID();
+	_chart_link += "' target='_blank'>Chart</a>";
 #endif
 
 	setPlotLegend("batt,fan,diode");
@@ -420,29 +409,14 @@ void Fridge::stateMachine()
 		#endif
 
 		#if WITH_DATA_LOG
-			if (data_log_inited)
-			{
-				fridgeLog_t log_rec;
-				log_rec.temp1 = cur_temperature1;
-				log_rec.temp2 = cur_temperature2;
-				log_rec.mech  = cur_mech_therm;
-				log_rec.rpm   = cur_comp_rpm;
-				data_log_inited = data_log.addRecord((logRecord_t) &log_rec);
-
-				// turns out that having flush in loop() does
-				// not work well with webserver ... it's the opposite
-				// of what I would like as I though of loop() as a good
-				// place to do slow stuff.  Perhaps it is only that it
-				// does CORE(ARDUINO) STUFF ..
-
-				static uint32_t last_flush = 0;
-				if (data_log_inited && now-last_flush > FLUSH_INTERVAL)
-				{
-					last_flush = now;
-					data_log_inited = data_log.flushToSD();
-				}
-			}
+			fridgeLog_t log_rec;
+			log_rec.temp1 = cur_temperature1;
+			log_rec.temp2 = cur_temperature2;
+			log_rec.mech  = cur_mech_therm;
+			log_rec.rpm   = cur_comp_rpm;
+			data_log.addRecord((logRecord_t) &log_rec);
 		#endif
+
 
 		#if WITH_TSENSE
 			// takes a a little over 2ms
