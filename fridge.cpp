@@ -59,21 +59,15 @@
 
 	myIOTDataLog data_log("fridgeData",4,fridge_cols);
 
-	// jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js
-	// because of ESP32 SPIFFS max filename length
-
-	const char *chart_deps =
-		"/myIOT/jquery.jqplot.min.css?cache=1,"
-		"/myIOT/jquery.jqplot.min.js?cache=1,"
-		"/myIOT/jqplot.dateAxisRenderer.js?cache=1,"
-		"/myIOT/jqplot.cursor.js?cache=1,"
-		"/myIOT/jqplot.highlighter.js?cache=1,"
-		"/myIOT/jqplot.legendRenderer.js?cache=1,"
-		"/myIOT/iotChart.js";
-
 	myIOTWidget_t fridgeWidget = {
 		"fridgeWidget",
-		chart_deps,
+        "/myIOT/jquery.jqplot.min.css?cache=1,"
+            "/myIOT/jquery.jqplot.min.js?cache=1,"
+            "/myIOT/jqplot.dateAxisRenderer.js?cache=1,"
+            "/myIOT/jqplot.cursor.js?cache=1,"
+            "/myIOT/jqplot.highlighter.js?cache=1,"
+            "/myIOT/jqplot.legendRenderer.js?cache=1,"
+			"/myIOT/iotChart.js",
 		"doChart('fridgeData')",
 		"stopChart('fridgeData')",
 		NULL };
@@ -231,7 +225,7 @@ void Fridge::setup()
 	String html = data_log.getChartHTML(
 		300,		// height
 		600,		// width
-		3600,		// default period for the chart
+		86400,		// default period for the chart
 		0 );		// default refresh interval
 
 	#if 0
@@ -540,13 +534,6 @@ void Fridge::loop()
 // chart API
 //----------------------------------------
 
-int getArg(const char *name, int def_value)
-{
-	String arg = myiot_web_server->arg(name);
-	if (arg != "")
-		return arg.toInt();
-	return def_value;
-}
 
 
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
@@ -561,10 +548,10 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 			// only used by temp_chart.html inasmuch as the
 			// chart html is baked into the myIOT widget
 			
-			int height = getArg("height",400);
-			int width  = getArg("width",800);
-			int period = getArg("period",3600);
-			int refresh = getArg("refresh",0);
+			int height = myiot_web_server->getArg("height",400);
+			int width  = myiot_web_server->getArg("width",800);
+			int period = myiot_web_server->getArg("period",86400);	// day default
+			int refresh = myiot_web_server->getArg("refresh",0);
 			return data_log.getChartHTML(height,width,period,refresh);
 		}
 		else if (path.startsWith("chart_header/fridgeData"))
@@ -574,7 +561,7 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 		}
 		else if (path.startsWith("chart_data/fridgeData"))
 		{
-			int secs = getArg("secs",0);
+			int secs = myiot_web_server->getArg("secs",0);
 			return data_log.sendChartData(secs);
 		}
 	#endif
