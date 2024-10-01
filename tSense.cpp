@@ -29,7 +29,7 @@
 #define PENDING_TIMEOUT	800
 	// 750 plus some wiggle room
 
-#define DEBUG_ADDR	1
+#define DEBUG_ADDR	0
 #define DEBUG_SENSE 0
 
 //----------------------

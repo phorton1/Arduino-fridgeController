@@ -424,7 +424,7 @@ void publishTemp(const char *id, float cur_value)
 	float set = fridge->getFloat(id);
 	if (set != cur)
 	{
-		LOGD("   setting %s(%0.3fC)=%0.3fF",id,cur_value,cur);
+		LOGD("   setting %s(%0.3fC)=%0.3fF",id,set,centigradeToFarenheit(set));
 		fridge->setFloat(id, cur);
 	}
 }
