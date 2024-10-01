@@ -213,7 +213,7 @@ int tSense::init()
 	DeviceAddress addr;
 
 #if WITH_FAKE_COMPRESSOR
-	if (!fakeCompressor::_compressor)
+	if (!fakeCompressor::_use_fake)
 #endif
 	{
 		int num_found = 0;
@@ -264,7 +264,7 @@ int tSense::init()
 bool tSense::pending()
 {
 #if WITH_FAKE_COMPRESSOR
-	if (fakeCompressor::_compressor)
+	if (fakeCompressor::_use_fake)
 		return false;
 #endif
 	if (m_pending && millis() - m_pending > PENDING_TIMEOUT)
@@ -281,7 +281,7 @@ int tSense::measure()
 	// Sets the m_pending timer.
 {
 #if WITH_FAKE_COMPRESSOR
-	if (fakeCompressor::_compressor)
+	if (fakeCompressor::_use_fake)
 		return TSENSE_OK;
 #endif
 
@@ -307,7 +307,7 @@ float tSense::getDegreesC(String str_addr)
 #endif
 
 #if WITH_FAKE_COMPRESSOR
-	if (fakeCompressor::_compressor)
+	if (fakeCompressor::_use_fake)
 	{
 		float retval = 0;
 		if (str_addr == MY_TSENSOR_01)

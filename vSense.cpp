@@ -153,7 +153,7 @@ void vSense::sense()
 
 	#elif WITH_FAKE_COMPRESSOR
 
-		if (fakeCompressor::_compressor)
+		if (fakeCompressor::_use_fake)
 		{
 			val[SAMPLE_PLUS] = fakeCompressor::g_sample_plus;
 			val[SAMPLE_FAN] = fakeCompressor::g_sample_fan;

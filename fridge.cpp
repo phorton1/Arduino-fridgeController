@@ -286,10 +286,7 @@ void Fridge::stateMachine()
 	{
 		last_vsense = now;
 		#if WITH_FAKE_COMPRESSOR
-			if (fakeCompressor::_compressor)
-			{
-				fakeCompressor::run();
-			}
+			fakeCompressor::run();
 		#endif
 
 		v_sense.sense();
@@ -327,7 +324,7 @@ void Fridge::stateMachine()
 		// odd place for this
 
 		#if WITH_FAKE_COMPRESSOR
-			if (fakeCompressor::_compressor)
+			if (fakeCompressor::_use_fake)
 			{
 				if (fakeCompressor::g_fridge_temp > _setpoint_high)
 					cur_mech_therm = 1;
@@ -340,9 +337,9 @@ void Fridge::stateMachine()
 
 
 		#if DEBUG_TSENSE
-			LOGD("TSENSE fridge=%0.3fF comp=%0.3fF  mech=%d  rpm=%d",
-				 centigradeToFarenheit(cur_fridge_temp),
-				 centigradeToFarenheit(cur_comp_temp),
+			LOGD("TSENSE fridge=%0.3fC comp=%0.3fC  mech=%d  rpm=%d",
+				 cur_fridge_temp,
+				 cur_comp_temp,
 				 cur_mech_therm,
 				 cur_rpm);
 		#endif

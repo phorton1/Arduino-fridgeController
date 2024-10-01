@@ -36,6 +36,24 @@ static valueIdType dash_items[] = {
 
 
 static valueIdType config_items[] = {
+#if WITH_FAKE_COMPRESSOR
+	ID_USE_FAKE,
+	ID_RESET_FAKE,
+	ID_FAKE_COMP_ON,
+	ID_FAKE_PROB_ERROR,
+	ID_FAKE_AMBIENT,
+	ID_FAKE_PERIOD,
+	ID_COOLING_ACCEL,
+	ID_WARMING_ACCEL,
+	ID_HEATING_ACCEL,
+	ID_COOLDOWN_ACCEL,
+	ID_MAX_COOL_VEL,
+	ID_MAX_WARM_VEL,
+	ID_MAX_HEAT_VEL,
+	ID_MAX_DOWN_VEL,
+
+#endif
+
 	ID_USER_RPM,
 	ID_MIN_RPM,
 	ID_MAX_RPM,
@@ -44,16 +62,6 @@ static valueIdType config_items[] = {
 	ID_EXTRA_SENSE_ID,
 	ID_TEMP_SENSE_SECS,
 	ID_INV_SENSE_MS,
-#if WITH_FAKE_COMPRESSOR
-	ID_FAKE_COMPRESSOR,
-	ID_FAKE_COMP_ON,
-	ID_FAKE_PROB_ERROR,
-	ID_FAKE_AMBIENT,
-	ID_FAKE_INSULATE,
-	ID_FAKE_COOLING,
-	ID_FAKE_HEATING,
-	ID_FAKE_COOLDOWN,
-#endif
     0
 };
 
@@ -103,14 +111,21 @@ const valDescriptor fridge_values[] =
 	{ID_CHART_LINK,			VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_chart_link, },
 
 #if WITH_FAKE_COMPRESSOR
-	{ID_FAKE_COMPRESSOR,	VALUE_TYPE_BOOL,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_compressor,	NULL,	{ .int_range	= {1,	0,	1}}, },
+	{ID_USE_FAKE,			VALUE_TYPE_BOOL,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_use_fake,	NULL,	{ .int_range	= {1,	0,	1}}, },
+    {ID_RESET_FAKE,         VALUE_TYPE_COMMAND, VALUE_STORE_PROG,       VALUE_STYLE_NONE,    NULL,                       			(void *) fakeCompressor::init },
 	{ID_FAKE_COMP_ON,		VALUE_TYPE_BOOL,    VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_comp_on,		NULL,	{ .int_range	= {0,	0,	1}}, },
 	{ID_FAKE_PROB_ERROR,	VALUE_TYPE_INT,     VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_prob_error,	NULL,	{ .int_range	= {3,	0,	100}}, },
 	{ID_FAKE_AMBIENT,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_ambient,		NULL,	{ .float_range	= {26.67, 20, 40}},	},
-	{ID_FAKE_INSULATE,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_insulate,	NULL,	{ .float_range	= {8,   -1000, 1000}},	},
-	{ID_FAKE_COOLING,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling,		NULL,	{ .float_range	= {7, 	-1000, 1000}},	},
-	{ID_FAKE_HEATING,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating,		NULL,	{ .float_range	= {0.5, -1000, 1000}},	},
-	{ID_FAKE_COOLDOWN,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown,	NULL,	{ .float_range	= {1.0, -1000, 1000}},	},
+
+	{ID_FAKE_PERIOD,		VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_fake_period,		NULL,	{ .int_range	= {4, 	1, 10000}},	},
+	{ID_COOLING_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling_accel,	NULL,	{ .float_range	= {0.2, -1000, 1000}},	},
+	{ID_WARMING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_warming_accel,	NULL,	{ .float_range	= {0.05, -1000, 1000}},	},
+	{ID_HEATING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating_accel,	NULL,	{ .float_range	= {0.3, -1000, 1000}},	},
+	{ID_COOLDOWN_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown_accel,	NULL,	{ .float_range	= {0.1, -1000, 1000}},	},
+	{ID_MAX_COOL_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_cool_vel, 	NULL,	{ .float_range	= {1.8, -1000, 1000}},	},
+	{ID_MAX_WARM_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_warm_vel, 	NULL,	{ .float_range	= {1, -1000, 1000}},	},
+	{ID_MAX_HEAT_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_heat_vel, 	NULL,	{ .float_range	= {2, -1000, 1000}},	},
+	{ID_MAX_DOWN_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_down_vel, 	NULL,	{ .float_range	= {1.5, -1000, 1000}},	},
 #endif                                          
 
 };
