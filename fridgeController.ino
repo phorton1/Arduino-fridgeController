@@ -1,72 +1,152 @@
 
 #include "fridge.h"
 #include <myIOTLog.h>
+#include "tSense.h"
+#if WITH_FAKE_COMPRESSOR
+	#include "fakeCompressor.h";
+#endif
 
-//----------------------------------------------------
-// ESP32 issues - for lack of a better place
-//----------------------------------------------------
-// In the middle of development I got a bunch of ESP32-S3-ZERO boards,
-// and wanted to try them.  Got totally sidetracked into updating
-// from ESP32 Core 1_0_6 to most recent 3_0_4 after I discovered that
-// my Arduino IDE 1.8.13 did not support the S3 board.
-//
-// First installing Arduino IDE 2.3.2 on a new laptop, and the 3_0_4
-// core, I was able to get an LED to blink.  Lots of work to figure
-// out how to get a myIOT test program to run on the little board,
-// before finally getting to uploading /data to the SPIFFS.
-// The SPIFFS upload tool is not supported in Arduino 2.0, so
-// I tried it from IDE 1.18.3, but of course, the old esp32tool
-// doesn't know about the S3.  Modified my "upload_spiffs.pm" script
-// and got it to work, but not before wiping out my /Users/Patrick
-// AppData/Local/Arduino15 esp32 stuff.  So an emergency restore of THAT
-// from a hard disk archive, and then installing 3_0_4 over that,
-// and jiggling around, I got the test app to run on the S3, BUT
-// it is not a reliable little platform and I could never get it
-// to fully work.  I digressed to a WebServer only test program
-// and had to mess with serial ports, and many things before giving
-// up in exhaustion at 4:00am.
-//
-// Today I started by carefully identifying the changes to myIOT
-// and ESP32SSDP that I had to make tot get it to compile, and
-// digging up some compile defines that I could drive the build
-// with. Got it all nice and then built the fridgeController
-// with 3_0_4.  Builds fine; runs not so good.
-//
-// Apparently there are more Serial Port kludges in 3_0_4, and
-// right now I am struggling to even debug fridgeController because
-// the serial port output is gobbledy-gook, on top of which I'm
-// getting a boot time error:
-//
-//	E (131) esp_co?fx_dump_flash: Incorrect size of core dump image: 6619237
-//
-// At least I verified that I can go back to 1_0_6 and the fridgeController
-// builds and seems to work as before.  In /Users/Patrick/AppData/Local
-// there are two switchable copies of Arduino15 ... one is 1_0_6 and
-// the other is 3_0_4 and the one not in use is named appropriately.
-// There are also backup copies of each in /junk/maybe_save.
-//
-// As a result, there are also multiple copies of preferences.txt
-// checked in and I have added an Arduino/_esp32  'test' directory
-// to localize the many test programs written in this foray.
-//
-// At this point, I cannot conclusively say it is a good idea to go
-// to 3_0_4.  It is definitely a bad idea to go to Arduino IDE 2, or
-// I risk not only all the ESP32 stuff (myIOT and FluidNC), but also
-// all the teensy stuff, which is already in flux.
-//
-// Compiling cnc_3018 against 3_0_4 was even worse.  Starting with
-// src/StackTrace/debug_helpers.cpp, which failed on, but does not need
-//			#    include "soc/cpu.h"
-// there are problems with basic ESP32 includes, that exist, but are not
-// compiling correctly in-and-around "assert()" and a failure to include
-// <cassert>, as well as Strings and flash memory:
-//
-// - src\spindles\spindle.h:83:38: error: cannot bind non-const lvalue reference of type 'IPAddress&' to an rvalue of type 'IPAddress'
-// - src\spindles\spindle.h:83:38: error: invalid conversion from 'int' to 'const __FlashStringHelper*' [-fpermissive]
-// - rc/Machine/Homing.h:43:25: error: no matching function for call to 'item(const char [6], int&)
-//
-// and many, many, other problems.
 
+//------------------------------
+// myIOT setup
+//------------------------------
+
+static valueIdType dash_items[] = {
+
+	ID_FRIDGE_MODE,
+	ID_SETPOINT_HIGH,
+	ID_SETPOINT_LOW,
+
+	ID_FRIDGE_TEMP,
+	ID_COMP_TEMP,
+	ID_EXTRA_TEMP,
+	ID_MECH_THERM,
+	ID_COMP_RPM,
+	ID_INV_ERROR,
+	ID_INV_PLUS,
+	ID_INV_FAN,
+	ID_INV_COMPRESS,
+	ID_TEMP_ERROR,
+	ID_VOLTS_FRIDGE,
+	ID_VOLTS_5V,
+
+	ID_CHART_LINK,
+    0
+};
+
+
+static valueIdType config_items[] = {
+	ID_USER_RPM,
+	ID_MIN_RPM,
+	ID_MAX_RPM,
+	ID_FRIDGE_SENSE_ID,
+	ID_COMP_SENSE_ID,
+	ID_EXTRA_SENSE_ID,
+	ID_TEMP_SENSE_SECS,
+	ID_INV_SENSE_MS,
+#if WITH_FAKE_COMPRESSOR
+	ID_FAKE_COMPRESSOR,
+	ID_FAKE_COMP_ON,
+	ID_FAKE_PROB_ERROR,
+	ID_FAKE_AMBIENT,
+	ID_FAKE_INSULATE,
+	ID_FAKE_COOLING,
+	ID_FAKE_HEATING,
+	ID_FAKE_COOLDOWN,
+#endif
+    0
+};
+
+
+static enumValue fridgeModes[] = {
+	"Off",
+	"RUN_MIN",
+	"RUN_MAX",
+	"RUN_USER",
+	"RUN_MECH",
+	"RUN_TEMP",
+    0};
+
+#define VALUE_STYLE_RO_TEMP		(VALUE_STYLE_READONLY | VALUE_STYLE_TEMPERATURE)
+
+// default temperatures are in centigrade
+
+const valDescriptor fridge_values[] =
+{
+    {ID_DEVICE_NAME,		VALUE_TYPE_STRING,  VALUE_STORE_PREF,     	VALUE_STYLE_REQUIRED,   NULL,   	NULL,   FRIDGE_CONTROLLER },        // override base class element
+
+	{ID_FRIDGE_MODE,		VALUE_TYPE_ENUM,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_fridge_mode,     NULL, 	{ .enum_range = { 0, fridgeModes }} },
+	{ID_USER_RPM,           VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_user_rpm,        NULL,	{ .int_range	= {2600, 2000, 3500}}, },
+	{ID_MIN_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_min_rpm,         NULL,	{ .int_range	= {2000, 2000, 3500}}, },
+	{ID_MAX_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_max_rpm,         NULL,	{ .int_range	= {3200, 2000, 3500}}, },
+	{ID_FRIDGE_SENSE_ID,    VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_fridge_sense_id, NULL,	MY_TSENSOR_01 },
+	{ID_COMP_SENSE_ID,      VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_comp_sense_id,   NULL,	MY_TSENSOR_02 },
+	{ID_EXTRA_SENSE_ID,     VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_extra_sense_id,  NULL,	},
+	{ID_TEMP_SENSE_SECS,    VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_temp_sense_secs, NULL,	{ .int_range	= {10,  0,		300}},  },
+	{ID_INV_SENSE_MS,   	VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_inv_sense_ms,	NULL,	{ .int_range	= {20,  5,		1000}}, },
+	{ID_SETPOINT_HIGH,      VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_high,   NULL,	{ .float_range	= {-12,	-200,	200}},	},
+	{ID_SETPOINT_LOW,       VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_low,    NULL,	{ .float_range	= {-20,	-200,	200}},	},
+
+	{ID_FRIDGE_TEMP,        VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_fridge_temp,     NULL,	{ .float_range	= {0,	-200,	200}},	},
+	{ID_COMP_TEMP,          VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_comp_temp,       NULL,	{ .float_range	= {0,	-200,	200}},	},
+	{ID_EXTRA_TEMP,         VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_extra_temp,      NULL,	{ .float_range	= {0,	-200,	200}},	},
+	{ID_MECH_THERM,         VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_mech_therm,      NULL,	},
+	{ID_COMP_RPM,           VALUE_TYPE_INT,		VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_comp_rpm,        NULL,	{ .int_range	= {0,	0,		5000}}, },
+	{ID_INV_ERROR,          VALUE_TYPE_INT,		VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_error,       NULL,	{ .int_range	= {0,	0,		7}}, },
+	{ID_INV_PLUS,           VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_plus,        NULL,	},
+	{ID_INV_FAN,            VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_fan,         NULL,	},
+	{ID_INV_COMPRESS,       VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_compress,    NULL,	},
+	{ID_TEMP_ERROR,         VALUE_TYPE_INT,		VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_temp_error,      NULL,	{ .int_range	= {0,	0,	10}}, },
+	{ID_VOLTS_FRIDGE,		VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_fridge,	NULL,	{ .float_range	= {0,	0,	15}},	},
+	{ID_VOLTS_5V,			VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_5v,		NULL,	{ .float_range	= {0,	0,	15}},	},
+
+	{ID_CHART_LINK,			VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_chart_link, },
+
+#if WITH_FAKE_COMPRESSOR
+	{ID_FAKE_COMPRESSOR,	VALUE_TYPE_BOOL,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_compressor,	NULL,	{ .int_range	= {1,	0,	1}}, },
+	{ID_FAKE_COMP_ON,		VALUE_TYPE_BOOL,    VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_comp_on,		NULL,	{ .int_range	= {0,	0,	1}}, },
+	{ID_FAKE_PROB_ERROR,	VALUE_TYPE_INT,     VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_prob_error,	NULL,	{ .int_range	= {3,	0,	100}}, },
+	{ID_FAKE_AMBIENT,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_ambient,		NULL,	{ .float_range	= {26.67, 20, 40}},	},
+	{ID_FAKE_INSULATE,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_insulate,	NULL,	{ .float_range	= {8,   -1000, 1000}},	},
+	{ID_FAKE_COOLING,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling,		NULL,	{ .float_range	= {7, 	-1000, 1000}},	},
+	{ID_FAKE_HEATING,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating,		NULL,	{ .float_range	= {0.5, -1000, 1000}},	},
+	{ID_FAKE_COOLDOWN,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown,	NULL,	{ .float_range	= {1.0, -1000, 1000}},	},
+#endif                                          
+
+};
+
+
+#define NUM_FRIDGE_VALUES (sizeof(fridge_values)/sizeof(valDescriptor))
+
+
+// static member variable declarations
+
+int 	Fridge::_fridge_mode;
+int 	Fridge::_user_rpm;
+int		Fridge::_min_rpm;
+int		Fridge::_max_rpm;
+String	Fridge::_fridge_sense_id;
+String	Fridge::_comp_sense_id;
+String	Fridge::_extra_sense_id;
+int		Fridge::_temp_sense_secs;
+int		Fridge::_inv_sense_ms;
+float	Fridge::_setpoint_high;
+float	Fridge::_setpoint_low;
+
+float	Fridge::_fridge_temp;
+float	Fridge::_comp_temp;
+float	Fridge::_extra_temp;
+bool 	Fridge::_mech_therm;
+int		Fridge::_comp_rpm;
+int		Fridge::_inv_error;
+bool	Fridge::_inv_plus;
+bool	Fridge::_inv_fan;
+bool	Fridge::_inv_compress;
+int		Fridge::_temp_error;
+float	Fridge::_volts_fridge;
+float	Fridge::_volts_5v;
+
+String 	Fridge::_chart_link;
 
 
 //--------------------------------
@@ -79,14 +159,20 @@ void setup()
     Serial.begin(MY_IOT_ESP32_CORE == 3 ? 115200 : 921600);
     delay(1000);
 
+	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
+	ledcWrite(PWM_CHANNEL, 0);
+
     Fridge::setDeviceType(FRIDGE_CONTROLLER);
     Fridge::setDeviceVersion(FRIDGE_CONTROLLER_VERSION);
     Fridge::setDeviceUrl(FRIDGE_CONTROLLER_URL);
 
     LOGU("");
+    fridge = new Fridge();
+    fridge->addValues(fridge_values,NUM_FRIDGE_VALUES);
+	fridge->setTabLayouts(dash_items,config_items);
     LOGU("fridgeController.ino setup() started on core(%d)",xPortGetCoreID());
 
-    fridge = new Fridge();
     fridge->setup();
 
     LOGU("fridgeController.ino setup() finished",0);
@@ -101,53 +187,3 @@ void loop()
 
 
 
-//==================================================
-// extern'd utilities
-//==================================================
-// temporary location
-
-int rpmToDuty(int rpm)
-	// Great news!  The compressor speed can be more precisely
-	// and flexibly controlled by PWM instead of a using bulky
-	// relays and fixed resistors or complicated digital pots.
-	//
-	// Assuming the documentation is accurate and the compressor
-	// speed is linear between the given currents, we can now
-	// map a compressor speed, in RPM, to a PWM duty cycle.
-	//
-	// This scaling algorithm gives pretty good results
-	// across the 2ma to 5ma range.  Intermediate (rpm)
-	// values are presumed.
-	//
-	// 		     		doc			initial testing		this method
-	// 		desired_ma	rpm			duty	actual_ma	duty	ma
-	//								255		5.07
-	// 		5.0			2000		244		5.00		244		4.99
-	// 		4.5			(2250)		218		4.59		217		4.56
-	// 		4.0			2500		191		4.08		191		4.08
-	// 		3.5			(2750)		164		3.56		164		3.56
-	// 		3.0			3000		137		3.04		138		3.05
-	// 		2.5			(3250)		110		2.50		111		2.52
-	// 		2.0			3500		85		1.99		85		2.01
-	//
-{
-	// empirically determined constants
-
-	#define DUTY_5MA	244.0	// corresponds to 5ma == 2000 rpm
-	#define DUTY_2MA	85.0	// corresponds to 2ma == 3500 rpm
-
-	if (rpm > 3500)
-		rpm = 3500;
-	if (rpm < 2000)
-		rpm = 2000;
-
-	float delta_rpm = rpm - 2000;					// 0 .. 1500 rpm faster than 2000 rpm
-	float delta_ma = (delta_rpm / 1500) * 3.0;		// 0 .. 3.0ma less than 5ma
-	float desired_ma = 5.0 - delta_ma;				// for display only
-	float duty_delta = (delta_ma / 3.00) * (DUTY_5MA - DUTY_2MA);
-	float duty_float = DUTY_5MA - duty_delta;
-	int duty = duty_float;
-
-	LOGD("rpmToDuty(%d)  desired_ma(%0.3f)  duty(%d)",rpm,desired_ma,duty);
-	return duty;
-}

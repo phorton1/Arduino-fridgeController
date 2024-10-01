@@ -20,12 +20,17 @@
 #include "tSense.h"
 #include "fridge.h"
 #include <myIOTLog.h>
+#if WITH_FAKE_COMPRESSOR
+	#include "fakeCompressor.h"
+#endif
+
 
 
 #define PENDING_TIMEOUT	800
 	// 750 plus some wiggle room
 
-
+#define DEBUG_ADDR	1
+#define DEBUG_SENSE 0
 
 //----------------------
 // defines
@@ -78,14 +83,14 @@ const ScratchPad  empty_pad = {0,0,0,0,0,0,0,0,0};
 // static stuff
 //-------------------------------------------
 
-const DeviceAddress MY_TSENSOR_01 = {0x28, 0x96, 0x08, 0xa1, 0x9d, 0x23, 0x0b, 0x89};
-const DeviceAddress MY_TSENSOR_02 = {0x28, 0xd3, 0x80, 0x90, 0xc3, 0x23, 0x06, 0x57};
-const DeviceAddress MY_TSENSOR_03 = {0x28, 0x3a, 0x0f, 0xe0, 0xc0, 0x23, 0x09, 0x41};
-const DeviceAddress MY_TSENSOR_04 = {0x28, 0x66, 0x13, 0x0a, 0x9e, 0x23, 0x0b, 0x2e};
-const DeviceAddress MY_TSENSOR_05 = {0x28, 0x60, 0x81, 0xdb, 0xc0, 0x23, 0x09, 0x15};
+const char *MY_TSENSOR_01 = "289608A19D230B89";
+const char *MY_TSENSOR_02 = "28D38090C3230657";
+const char *MY_TSENSOR_03 = "283A0FE0C0230941";
+const char *MY_TSENSOR_04 = "2866130A9E230B2E";
+const char *MY_TSENSOR_05 = "286081DBC0230915";
 
 
-static const uint8_t *KNOWN_SENSORS[] = {
+static const char *KNOWN_SENSORS[] = {
 	MY_TSENSOR_01,
 	MY_TSENSOR_02,
 	MY_TSENSOR_03,
@@ -97,18 +102,74 @@ static const uint8_t *KNOWN_SENSORS[] = {
 
 
 
+//-------------------------------
+// static utilties
+//-------------------------------
+
+static String addrToStr(const DeviceAddress addr)
+{
+	String rslt;
+	for (int i=0; i<8; i++)
+	{
+		static char buf[3];
+		sprintf(buf,"%02X",addr[i]);
+		rslt += buf;
+	}
+	return rslt;
+}
+
+
+static uint8_t hexDigitValue(char c)
+{
+	if (c >= 'A' && c < 'F')
+		return (c - 'A' + 10);
+	return c - '0';
+}
+
+
+static void strToAddr(uint8_t *addr, String str_addr)
+{
+	const char *ptr = str_addr.c_str();
+	for (int i=0; i<8; i++)
+	{
+		addr[i] =
+			(hexDigitValue(*ptr++) << 4) |
+			hexDigitValue(*ptr++);
+	}
+
+	#if DEBUG_ADDR
+		LOGD("strToAddr(%s)=0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X",
+			 str_addr.c_str(),
+			 addr[0],
+			 addr[1],
+			 addr[2],
+			 addr[3],
+			 addr[4],
+			 addr[5],
+			 addr[6],
+			 addr[7]);
+	#endif
+}
+
+
 static int findKnownSensor(const DeviceAddress addr)
 {
 	for (int i=0; i<NUM_KNOWN_SENSORS; i++)
 	{
-		if (!memcmp(addr,KNOWN_SENSORS[i],8))
+		uint8_t known_addr[8];
+		strToAddr(known_addr, String(KNOWN_SENSORS[i]));
+		if (!memcmp(addr,known_addr,8))
 			return i+1;
 	}
-	LOGE("Could not find KNOWN_SENSOR(%s)",tSense::addrToStr(addr));
+	LOGE("Could not find KNOWN_SENSOR(%s)",addrToStr(addr).c_str());
 	return 0;
 }
 
 
+
+//-----------------------------
+// implementation
+//-----------------------------
 
 int16_t calculateRaw(const DeviceAddress addr, const uint8_t* scratchPad)
 	// returns fixed-point temperature, scaling factor 2^-7
@@ -133,22 +194,14 @@ int16_t calculateRaw(const DeviceAddress addr, const uint8_t* scratchPad)
 
 
 
-// static
-const char *tSense::addrToStr(const DeviceAddress addr)
-{
-	static char buf[80];
-	for (int i=0; i<8; i++)
-	{
-		sprintf(&buf[i*6],"0x%02x%s",addr[i],i<7?", ":"");
-	}
-	return buf;
-}
 
 
 
 //---------------------------------------------
 // API
 //---------------------------------------------
+// requires a reboot if the fake compressor feature
+// is entiredly turned on or off
 
 int tSense::init()
 {
@@ -159,41 +212,46 @@ int tSense::init()
 
 	DeviceAddress addr;
 
-	int num_found = 0;
-	m_wire->reset_search();
-	while (m_wire->search(addr))
+#if WITH_FAKE_COMPRESSOR
+	if (!fakeCompressor::_compressor)
+#endif
 	{
-		if (OneWire::crc8(addr, 7) == addr[DSROM_CRC])
+		int num_found = 0;
+		m_wire->reset_search();
+		while (m_wire->search(addr))
 		{
-			bool valid_family =
-				addr[DSROM_FAMILY] == DS18S20MODEL ||
-				addr[DSROM_FAMILY] == DS18B20MODEL ||
-				addr[DSROM_FAMILY] == DS1822MODEL  ||
-				addr[DSROM_FAMILY] == DS1825MODEL  ||
-				addr[DSROM_FAMILY] == DS28EA00MODEL;
-
-			if (valid_family)
+			if (OneWire::crc8(addr, 7) == addr[DSROM_CRC])
 			{
-				num_found++;
+				bool valid_family =
+					addr[DSROM_FAMILY] == DS18S20MODEL ||
+					addr[DSROM_FAMILY] == DS18B20MODEL ||
+					addr[DSROM_FAMILY] == DS1822MODEL  ||
+					addr[DSROM_FAMILY] == DS1825MODEL  ||
+					addr[DSROM_FAMILY] == DS28EA00MODEL;
 
-				int known = findKnownSensor(addr);
-				int res = getResolution(addr);
-				LOGD("known(%d) res(%d) {%s} ",
-					known,res,addrToStr(addr));
+				if (valid_family)
+				{
+					num_found++;
+
+					int known = findKnownSensor(addr);
+					int res = getResolution(addr);
+					LOGD("known(%d) res(%d) {%s} ",
+						known,res,addrToStr(addr).c_str());
+				}
+				else
+				{
+					LOGW("tSense.cpp INVALID FAMILY: %s",addrToStr(addr).c_str());
+						// only a warning on the assumption the bus might
+						// contain other valid OneWire devices
+				}
 			}
 			else
-			{
-				LOGW("tSense.cpp INVALID FAMILY: %s",addrToStr(addr));
-					// only a warning on the assumption the bus might
-					// contain other valid OneWire devices
-			}
+				tsenseError(TSENSE_ERROR_BAD_ADDR,addr);
 		}
-		else
-			tsenseError(TSENSE_ERROR_BAD_ADDR,addr);
-	}
 
-	if (!m_last_error && !num_found)
-		tsenseError(TSENSE_ERROR_NO_DEVICES,NULL);
+		if (!m_last_error && !num_found)
+			tsenseError(TSENSE_ERROR_NO_DEVICES,NULL);
+	}
 	
 	measure();
 	proc_leave();
@@ -205,6 +263,10 @@ int tSense::init()
 
 bool tSense::pending()
 {
+#if WITH_FAKE_COMPRESSOR
+	if (fakeCompressor::_compressor)
+		return false;
+#endif
 	if (m_pending && millis() - m_pending > PENDING_TIMEOUT)
 		m_pending = 0;
 	return m_pending;
@@ -218,6 +280,11 @@ int tSense::measure()
 	// Starts a measurement on all devices on the bus.
 	// Sets the m_pending timer.
 {
+#if WITH_FAKE_COMPRESSOR
+	if (fakeCompressor::_compressor)
+		return TSENSE_OK;
+#endif
+
 	if (pending())
 		return tsenseError(TSENSE_ERROR_PENDING,NULL);
 
@@ -233,8 +300,26 @@ int tSense::measure()
 
 
 
-float tSense::getDegreesC(const DeviceAddress addr)
+float tSense::getDegreesC(String str_addr)
 {
+#if DEBUG_SENSE
+	LOGD("getDegreesC(%s)",str_addr.c_str());
+#endif
+
+#if WITH_FAKE_COMPRESSOR
+	if (fakeCompressor::_compressor)
+	{
+		float retval = 0;
+		if (str_addr == MY_TSENSOR_01)
+			retval = fakeCompressor::g_fridge_temp;
+		else if (str_addr == MY_TSENSOR_02)
+			retval = fakeCompressor::g_comp_temp;
+		return retval;
+	}
+#endif
+
+	uint8_t addr[8];
+	strToAddr(addr,str_addr);
 	if (pending())
 	{
 		tsenseError(TSENSE_ERROR_PENDING,addr);
@@ -248,21 +333,6 @@ float tSense::getDegreesC(const DeviceAddress addr)
 	return (float) raw * 0.0078125f;
 }
 
-float tSense::getDegreesF(const DeviceAddress addr)
-{
-	if (pending())
-	{
-		tsenseError(TSENSE_ERROR_PENDING,addr);
-		return TEMPERATURE_ERROR;
-	}
-	ScratchPad scratch_pad;
-	if (readScratchPad(addr, scratch_pad) != TSENSE_OK)
-		return TEMPERATURE_ERROR;
-	int raw = calculateRaw(addr,scratch_pad);
-	// F = (C*1.8)+32 = (RAW/128*1.8)+32 = (RAW*0.0140625)+32
-	return ((float) raw * 0.0140625f) + 32.0f;
-}
-
 
 
 //-------------------------------------------------
@@ -271,7 +341,7 @@ float tSense::getDegreesF(const DeviceAddress addr)
 
 int tSense::tsenseError(int err_code, const DeviceAddress addr)
 {
-	LOGE("TSENSE_ERROR(%d) addr(%s)",err_code,addr?addrToStr(addr):"");
+	LOGE("TSENSE_ERROR(%d) addr(%s)",err_code,addr?addrToStr(addr).c_str():"");
 	m_last_error = err_code;
 	return err_code;
 }

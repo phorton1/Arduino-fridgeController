@@ -87,6 +87,13 @@ goes from 0V to 12V with the full current of the FAN/DIODE+ pin,
 which is current limited to 1A, and makes a much more reliable
 DIAG_DIODE and easy-to-use signal for the Controller.
 
+### Temperature Sensors
+
+There are two 3 pin connectors on the Controller board for
+connecting DS18B20 temperature sensors.  Although there
+are only two connectors, they share the same OneWire interface,
+and, in reality, upto 64 sensors *could* be conneced to
+the fridgeController.
 
 
 ### Controller Box Pin Inputs

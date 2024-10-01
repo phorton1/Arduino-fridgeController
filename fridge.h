@@ -10,7 +10,28 @@
 
 // global debugging defines
 
-#define TEMP_BREADBOARD		0
+#define WITH_FAKE_COMPRESSOR	1
+	// The FAKE_COMPRESSOR emulates a real running compressor/inverter
+	// connected directly to the Controller (no miniBox needed).
+	// The fake compressor is known by vSense.cpp and tSense.cpp.
+	// With regards to vSense.cpp
+	//		- the FAN/DIODE+ value randomly varies about 12V when
+	//		  the FAKE_COMPRESSOR is on
+	//      - attempts to start the compressor will have a 1 in 3 chance
+	//		  of failing.
+	//      - emulates the DIAG_DIODE and restart behavior in failed starts.
+	//      - can be caused to enter an error state and enter restart cycles
+	//		  STOP by setting FAKE_INV_ERR in the UI
+	//      - starts and stops the compressor based on a setRPM() method
+	// With regards to tSense.cpp, the fake compressor
+	// 		- has an ambient temperature of 80F
+	//		- heats up when the compressor is running; faster at higher rpm
+	//		- cools down the refridgerator when running; slightly faster at higher rpm
+	//      - emulates a refridgerator that warms up	//
+
+
+
+
 
 //=========================================================
 // pins
@@ -35,20 +56,15 @@
 #define PIN_LED_BLUE		25		// compressor on
 #define PIN_LED_YELLOW		27		// fan on
 
-
-#if TEMP_BREADBOARD
-	#define PIN_LED_BLUE		2		// onboard led
-	#define PIN_S_PLUS			35
-	#define PIN_S_FAN			34
-	#define PIN_S_DIODE 		39
-#endif
-
-
 #define LED_COMPRESS_ON		PIN_LED_BLUE
 #define LED_DIODE_ON 		PIN_LED_RED
 #define LED_POWER_ON		PIN_LED_GREEN
 #define LED_FAN_ON			PIN_LED_YELLOW
 
+
+#define PWM_CHANNEL				0
+#define PWM_FREQ				5000
+#define PWM_RESOLUTION			8
 
 
 //------------------------
@@ -59,21 +75,56 @@
 #define FRIDGE_CONTROLLER_VERSION	"fc0.2"
 #define FRIDGE_CONTROLLER_URL		"https://github.com/phorton1/Arduino-fridgeController"
 
-// ids
+// enumerated FRIDGE_MODE types & ids
 
-#define ID_TEMPERATURE_1           	"TEMPERATURE_1"
-#define ID_TEMPERATURE_2           	"TEMPERATURE_2"
-#define ID_TEMP_ERROR           	"TEMP_ERROR"
+#define FRIDGE_MODE_OFF				0
+#define FRIDGE_MODE_RUN_MIN			1
+#define FRIDGE_MODE_RUN_MAX			2
+#define FRIDGE_MODE_RUN_USER		3
+#define FRIDGE_MODE_RUN_MECH		4
+#define FRIDGE_MODE_RUN_TEMP		5
 
-#define ID_MECH_THERM				"MECH_THERM"
-#define ID_COMP_RPM					"COMP_RPM"
 
-#define ID_INV_ERROR           		"INV_ERROR"
-#define ID_INV_PLUS           		"INV_PLUS"
-#define ID_INV_FAN           		"INV_FAN"
-#define ID_INV_COMPRESS           	"INV_COMPRESS"
+#define ID_FRIDGE_MODE				"FRIDGE_MODE"
+#define ID_USER_RPM                 "USER_RPM"
+#define ID_MIN_RPM                  "MIN_RPM"
+#define ID_MAX_RPM                  "MAX_RPM"
+#define ID_FRIDGE_SENSE_ID          "FRIDGE_SENSE_ID"
+#define ID_COMP_SENSE_ID            "COMP_SENSE_ID"
+#define ID_EXTRA_SENSE_ID           "EXTRA_SENSE_ID"
+#define ID_TEMP_SENSE_SECS          "TEMP_SENSE_SECS"
+#define ID_INV_SENSE_MS         	"INV_SENSE_MS"
+#define ID_SETPOINT_HIGH            "SETPOINT_HIGH"
+#define ID_SETPOINT_LOW             "SETPOINT_LOW"
 
-#define ID_CHART_LINK     			"CHART_LINK"
+
+#define ID_FRIDGE_TEMP              "FRIDGE_TEMP"
+#define ID_COMP_TEMP                "COMP_TEMP"
+#define ID_EXTRA_TEMP               "EXTRA_TEMP"
+#define ID_MECH_THERM               "MECH_THERM"
+#define ID_COMP_RPM                 "COMP_RPM"
+#define ID_INV_ERROR                "INV_ERROR"
+#define ID_INV_PLUS                 "INV_PLUS"
+#define ID_INV_FAN                  "INV_FAN"
+#define ID_INV_COMPRESS             "INV_COMPRESS"
+#define ID_TEMP_ERROR               "TEMP_ERROR"
+#define ID_VOLTS_FRIDGE				"VOLTS_FRIDGE"
+#define ID_VOLTS_5V					"VOLTS_5V"
+
+#define ID_CHART_LINK				"CHART_LINK"
+
+
+#define ID_FAKE_COMPRESSOR			"FAKE_COMPRESSOR"
+#define ID_FAKE_COMP_ON				"FAKE_COMP_ON"
+#define ID_FAKE_PROB_ERROR			"FAKE_PROB_ERROR"
+#define ID_FAKE_AMBIENT				"FAKE_AMBIENT"
+#define ID_FAKE_INSULATE    		"FAKE_INSULATE"
+#define ID_FAKE_COOLING     		"FAKE_COOLING"
+#define ID_FAKE_HEATING     		"FAKE_HEATING"
+#define ID_FAKE_COOLDOWN    		"FAKE_COOLDOWN"
+
+
+
 
 
 class Fridge : public myIOTDevice
@@ -86,26 +137,42 @@ public:
     virtual void setup() override;
     virtual void loop() override;
 
-    static const valDescriptor m_fridge_values[];
+    // config values
 
-    // values
+	static int 		_fridge_mode;
+	static int 		_user_rpm;
+	static int		_min_rpm;
+	static int		_max_rpm;
+	static String	_fridge_sense_id;
+	static String	_comp_sense_id;
+	static String	_extra_sense_id;
+	static int		_temp_sense_secs;
+	static int		_inv_sense_ms;
+	static float	_setpoint_high;
+	static float	_setpoint_low;
 
-	static float	_temperature1;
-	static float	_temperature2;
-	static int		_temp_error;
+	// state values
 
-	static bool		_mech_therm;
+	static float	_fridge_temp;
+	static float	_comp_temp;
+	static float	_extra_temp;
+	static bool 	_mech_therm;
 	static int		_comp_rpm;
-
 	static int		_inv_error;
-	static bool 	_inv_plus;
+	static bool		_inv_plus;
 	static bool		_inv_fan;
 	static bool		_inv_compress;
+	static int		_temp_error;
+	static float	_volts_fridge;
+	static float	_volts_5v;
 
-	 static String 	_chart_link;
+	// misc values
+
+	static String 	_chart_link;
 
 	// methods
 
+	void setRPM(int rpm);
 	void stateMachine();
 	static void stateTask(void *param);
 
@@ -125,8 +192,10 @@ extern Fridge *fridge;
 
 
 //=========================================================
-// external utilities in fridgeUtils.cpp
+// external utilities
 //=========================================================
 
 extern int rpmToDuty(int rpm);
+	// in fridge.cpp
+
 

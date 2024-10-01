@@ -21,6 +21,9 @@
 #include "vSense.h"
 #include "fridge.h"
 #include <myIOTLog.h>
+#if WITH_FAKE_COMPRESSOR
+	#include "fakeCompressor.h"
+#endif
 
 // structure
 
@@ -124,69 +127,64 @@ void vSense::sense()
 	// important to only call every 50ms or so
 	// because this smooths the sensing of inputs
 {
+
 	uint32_t now = millis();
 	// static uint32_t last_read = 0;
 	// if (now - last_read < 50) return;
 	// last_read = now;
 
-	doRead(SAMPLE_PLUS,PIN_S_PLUS);
-	doRead(SAMPLE_FAN,PIN_S_FAN);
-	doRead(SAMPLE_DIODE,PIN_S_DIODE);
-	ptr++;
-	if (ptr >= NUM_SAMPLES)
-		ptr = 0;
+	#define TEST_VALUES 0
+
+	#if TEST_VALUES
+
+		static int test_values[3] = {20,20,20};
+		for (int i=0; i<3; i++)
+		{
+			// for testing plotter we allow negative numbers
+			// and can try really small numbers
+			test_values[i] += random(5) - 2;
+
+			if (test_values[i] >= 4095)
+				test_values[i] = 4095;
+			if (test_values[i] < -4096)
+				test_values[i] = -4096;
+			val[i] = test_values[i];
+		}
+
+	#elif WITH_FAKE_COMPRESSOR
+
+		if (fakeCompressor::_compressor)
+		{
+			val[SAMPLE_PLUS] = fakeCompressor::g_sample_plus;
+			val[SAMPLE_FAN] = fakeCompressor::g_sample_fan;
+			val[SAMPLE_DIODE] = fakeCompressor::g_sample_diode;
+		}
+
+	#endif
+	{
+		doRead(SAMPLE_PLUS,PIN_S_PLUS);
+		doRead(SAMPLE_FAN,PIN_S_FAN);
+		doRead(SAMPLE_DIODE,PIN_S_DIODE);
+		ptr++;
+		if (ptr >= NUM_SAMPLES)
+			ptr = 0;
+	}
 
 	#if WITH_WS
-
-		#define TEST_VALUES 1
-		#define SMALL_TEST  0
-
-		#if TEST_VALUES
-			static float test_values[3] = {20,20,20};
-			float use_values[3];
-
-			for (int i=0; i<3; i++)
-			{
-				// for testing plotter we allow negative numbers
-				// and can try really small numbers
-				test_values[i] += random(5) - 2;
-				
-				if (test_values[i] >= 4095)
-					test_values[i] = 4095;
-				if (test_values[i] < -4096)
-					test_values[i] = -4096;
-				use_values[i] = test_values[i];
-				#if SMALL_TEST
-					use_values[i] /= 100000;
-				#endif
-
-			}
-		#endif
 
 		if (fridge->_plot_data)
 		{
 			static char plot_buf[120];
-
-			#if TEST_VALUES	// test floats
-				sprintf(plot_buf,"{\"plot_data\":[%0.5f,%0.5f,%0.5f]}",
-					use_values[0],
-					use_values[1],
-					use_values[2]);
-
-			#else	// real integers
-				sprintf(plot_buf,"{\"plot_data\":[%d,%d,%d]}",
-					val[0],
-					val[1],
-					val[2]);
-			#endif
+			sprintf(plot_buf,"{\"plot_data\":[%d,%d,%d]}",
+				val[0],
+				val[1],
+				val[2]);
 
 			// LOGD("Sending plot_buf(%s)",plot_buf);
-
 			// I am concerned with broadcasting to WS
 			// in the time-critical Fridge::stateMachine(),
 			// much as I am concerned about data logging
 			// from that task.
-			
 			fridge->wsBroadcast(plot_buf);
 		}
 

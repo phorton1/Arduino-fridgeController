@@ -1,34 +1,31 @@
 //-----------------------------------------------------------
 // fridge.cpp
 //-----------------------------------------------------------
-
-#define WITH_DATA_LOG	1
-#define WITH_TSENSE     0
-#define WITH_PWM        0
+// TODO:
+//
+//  Show found TSense devices
+//  Set voltages when change > 0.1 volts
+//	Log with correct names
+//	Log more stuff
+//  Chart options for initial shown columns
+//  Emulate a whole working compressor?
 
 #include "fridge.h"
-#include "vSense.h"
 #include "uiScreen.h"
 #include "uiButtons.h"
+#include "vSense.h"
+#include "tSense.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
 
-
-#define DEBUG_TSENSE	0
-
-
-#define TEMP_INTERVAL		3000
-
-
-#if WITH_TSENSE
-	#include "tSense.h"
-	#define tsense_pending()	t_sense.pending()
-	OneWire one_wire(PIN_ONE_WIRE);
-	tSense t_sense(&one_wire);
-#else
-	#define tsense_pending()	0
+#if WITH_FAKE_COMPRESSOR
+	#include "fakeCompressor.h";
 #endif
 
+
+#define DEBUG_TSENSE	1
+
+#define WITH_DATA_LOG	1
 
 
 //-----------------------------------------------
@@ -51,10 +48,10 @@
 	// The tick_intervals are 0 based and will be will be lined up
 
 	logColumn_t  fridge_cols[] = {
-		{"temp1",	LOG_COL_TYPE_FLOAT,		10,		},
-		{"temp2",	LOG_COL_TYPE_FLOAT,		10,		},
-		{"mech",	LOG_COL_TYPE_UINT32,	1,		},
-		{"rpm",		LOG_COL_TYPE_UINT32,	500,	},
+		{"temp1",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+		{"temp2",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+		{"mech",	LOG_COL_TYPE_UINT32,		1,		},
+		{"rpm",		LOG_COL_TYPE_UINT32,		500,	},
 	};
 
 	myIOTDataLog data_log("fridgeData",4,fridge_cols);
@@ -76,94 +73,27 @@
 #endif	// WITH_DATA_LOG
 
 
-
-//------------------------------
-// myIOT setup
-//------------------------------
-
-static valueIdType dash_items[] = {
-	ID_TEMPERATURE_1,
-	ID_TEMPERATURE_2,
-	ID_TEMP_ERROR,
-	ID_MECH_THERM,
-	ID_COMP_RPM,
-	ID_INV_ERROR,
-	ID_INV_PLUS,
-	ID_INV_FAN,
-	ID_INV_COMPRESS,
-	ID_CHART_LINK,
-    0
-};
-
-
-static valueIdType config_items[] = {
-    0
-};
-
-
-const valDescriptor Fridge::m_fridge_values[] =
-{
-    {ID_DEVICE_NAME,	VALUE_TYPE_STRING,  VALUE_STORE_PREF,     VALUE_STYLE_REQUIRED,   NULL,   	NULL,   FRIDGE_CONTROLLER },        // override base class element
-	{ID_TEMPERATURE_1,	VALUE_TYPE_FLOAT,   VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temperature1,	NULL,	{ .float_range	= {0,	-200,	2000}},	},
-	{ID_TEMPERATURE_2,	VALUE_TYPE_FLOAT,   VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temperature2,	NULL,	{ .float_range	= {0,	-200,	2000}},	},
-	{ID_TEMP_ERROR,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_temp_error,      NULL,	{ .int_range	= {0,	0,		100}},	},
-
-	{ID_MECH_THERM,		VALUE_TYPE_BOOL,	VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_mech_therm,		NULL,	},
-	{ID_COMP_RPM,		VALUE_TYPE_INT,		VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_comp_rpm,		NULL,	{ .int_range	= {0,	0,		5000}}, },
-
-	{ID_INV_ERROR,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_error,       NULL,	{ .int_range	= {0,	0,		100}},	},
-	{ID_INV_PLUS,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_plus,        NULL,	{ .int_range	= {0,	0,		1}},	},
-	{ID_INV_FAN,		VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_fan,         NULL,	{ .int_range	= {0,	0,		1}},	},
-	{ID_INV_COMPRESS,	VALUE_TYPE_INT,     VALUE_STORE_TOPIC,		VALUE_STYLE_READONLY,	(void *) &_inv_compress,    NULL,	{ .int_range	= {0,	0,		1}},	},
-
-   { ID_CHART_LINK,		VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &_chart_link,     },
-
-
-};
-
-#define NUM_FRIDGE_VALUES (sizeof(m_fridge_values)/sizeof(valDescriptor))
-
-
-// static member variable declarations
-
-float	Fridge::_temperature1;
-float	Fridge::_temperature2;
-int		Fridge::_temp_error;
-
-bool	Fridge::_mech_therm;
-int		Fridge::_comp_rpm;
-
-int		Fridge::_inv_error;
-bool 	Fridge::_inv_plus;
-bool	Fridge::_inv_fan;
-bool	Fridge::_inv_compress;
-
-String	Fridge::_chart_link;
-
 Fridge *fridge;
 
+OneWire one_wire(PIN_ONE_WIRE);
+tSense t_sense(&one_wire);
 
 
 //------------------------------
 // Application Vars
 //------------------------------
 
-#if WITH_PWM
-	#define PWM_CHANNEL				0
-	#define PWM_FREQ				5000
-	#define PWM_RESOLUTION			8
-	#define TEST_COMPRESSOR_SPEED	0
-#endif
 
 
 vSense v_sense;
 uiScreen  ui_screen;
 uiButtons ui_buttons(PIN_BUTTON1,PIN_BUTTON2,PIN_BUTTON3);
 
-float cur_temperature1;
-float cur_temperature2;
+float cur_fridge_temp;
+float cur_comp_temp;
+float cur_extra_temp;
 bool  cur_mech_therm;
-int	  cur_comp_rpm;
+int	  cur_rpm;
 
 
 
@@ -174,8 +104,6 @@ int	  cur_comp_rpm;
 Fridge::Fridge()
 {
     fridge = this;
-    addValues(m_fridge_values,NUM_FRIDGE_VALUES);
-    setTabLayouts(dash_items,config_items);
 }
 
 
@@ -184,22 +112,14 @@ void Fridge::setup()
     LOGD("Fridge::setup(%s) started",getVersion());
     proc_entry();
 
+	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
+	
 	ui_screen.init();
 	ui_buttons.init();
-	v_sense.init();
-
-#if WITH_PWM
-	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
-	ledcWrite(PWM_CHANNEL, 0);
-#endif
-
-#if WITH_TSENSE
-	int err = t_sense.init();
-#endif
 
 	myIOTDevice::setup();
-
+	LOGI("initial FRIDGE_MODE=%d",_fridge_mode);
+	
 	if (!getBool(ID_WIFI))
 	{
 		ui_screen.displayLine(1,"WIFI OFF");
@@ -245,6 +165,15 @@ void Fridge::setup()
 	setPlotLegend("batt,fan,diode");
 		// see vSense.cpp
 
+	// ACTIVE INITIALIZATION
+
+#if WITH_FAKE_COMPRESSOR
+	fakeCompressor::init();
+#endif
+
+	v_sense.init();
+	t_sense.init();
+
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
         "stateTask",
@@ -278,6 +207,67 @@ void Fridge::stateTask(void *param)
 
 
 
+//==================================================
+// setRPM
+//==================================================
+// Great news!  The compressor speed can be more precisely
+// and flexibly controlled by PWM instead of a using bulky
+// relays and fixed resistors or complicated digital pots.
+//
+// Assuming the documentation is accurate and the compressor
+// speed is linear between the given currents, we can now
+// map a compressor speed, in RPM, to a PWM duty cycle.
+//
+// This scaling algorithm gives pretty good results
+// across the 2ma to 5ma range.  Intermediate (rpm)
+// values are presumed.
+//
+// 		     		doc			initial testing		this method
+// 		desired_ma	rpm			duty	actual_ma	duty	ma
+//								255		5.07
+// 		5.0			2000		244		5.00		244		4.99
+// 		4.5			(2250)		218		4.59		217		4.56
+// 		4.0			2500		191		4.08		191		4.08
+// 		3.5			(2750)		164		3.56		164		3.56
+// 		3.0			3000		137		3.04		138		3.05
+// 		2.5			(3250)		110		2.50		111		2.52
+// 		2.0			3500		85		1.99		85		2.01
+
+void Fridge::setRPM(int rpm)
+{
+	int pwm_duty = 0;
+
+	if (rpm > 0)
+	{
+		// empirically determined constants
+
+		#define DUTY_5MA	244.0	// corresponds to 5ma == 2000 rpm
+		#define DUTY_2MA	85.0	// corresponds to 2ma == 3500 rpm
+
+		if (rpm > 3500)
+			rpm = 3500;
+		if (rpm < 2000)
+			rpm = 2000;
+
+		float delta_rpm = rpm - 2000;					// 0 .. 1500 rpm faster than 2000 rpm
+		float delta_ma = (delta_rpm / 1500) * 3.0;		// 0 .. 3.0ma less than 5ma
+		float desired_ma = 5.0 - delta_ma;				// for display only
+		float duty_delta = (delta_ma / 3.00) * (DUTY_5MA - DUTY_2MA);
+		float duty_float = DUTY_5MA - duty_delta;
+		pwm_duty = duty_float;
+		LOGI("setRPM(%d)  desired_ma(%0.3f)  duty(%d)",rpm,desired_ma,pwm_duty);
+	}
+	else
+	{
+		LOGI("setRPM(0)");
+	}
+
+	ledcWrite(PWM_CHANNEL, pwm_duty);
+	cur_rpm = rpm;
+}
+
+
+
 //=========================================================
 // stateMachine()
 //=========================================================
@@ -289,11 +279,19 @@ void Fridge::stateMachine()
 	//--------------------------------
 	// voltage (inverter) sensors
 	//--------------------------------
+	// which is also how fast we run the fake compressor
 
 	static uint32_t last_vsense = 0;
-	if (now - last_vsense >= 20)
+	if (now - last_vsense >= _inv_sense_ms)
 	{
 		last_vsense = now;
+		#if WITH_FAKE_COMPRESSOR
+			if (fakeCompressor::_compressor)
+			{
+				fakeCompressor::run();
+			}
+		#endif
+
 		v_sense.sense();
 
 	}
@@ -301,183 +299,103 @@ void Fridge::stateMachine()
 	//---------------------------
 	// temperature sensors
 	//---------------------------
-	// need sensing of cur_mech_therm and system to setup cur_comp_rpm
 
 	static uint32_t last_tsense;
-	if (!tsense_pending() && now - last_tsense > TEMP_INTERVAL)
+	if (now - last_tsense > (_temp_sense_secs * 1000))
 	{
 		last_tsense = now;
 
-		#if WITH_TSENSE
+		if (_fridge_sense_id != "")
+		{
+			float temp = t_sense.getDegreesC(_fridge_sense_id);
+			if (temp < TEMPERATURE_ERROR)
+				cur_fridge_temp = temp;
+		}
+		if (_comp_sense_id != "")
+		{
+			float temp = t_sense.getDegreesC(_comp_sense_id);
+			if (temp < TEMPERATURE_ERROR)
+				cur_comp_temp = temp;
+		}
+		if (_extra_sense_id != "")
+		{
+			float temp = t_sense.getDegreesC(_extra_sense_id);
+			if (temp < TEMPERATURE_ERROR)
+				cur_extra_temp = temp;
+		}
 
-			// Takes 13.3 ms per sensor with default 12 bit resolution!!
-			// Could read just 2 bytes to get it down to about 2 ms
-			// if TEMPERATURE_ERROR *could* check getLastError();
+		// odd place for this
 
-			float temp1 = t_sense.getDegreesF(MY_TSENSOR_01);
-			if (temp1 < TEMPERATURE_ERROR)
-				cur_temperature1 = temp1;
-			float temp2 = t_sense.getDegreesF(MY_TSENSOR_02);
-			if (temp2 < TEMPERATURE_ERROR)
-				cur_temperature2 = temp1;
-
-		#else
-
-			// create dummy numbers for testing logging and chart
-			// temp1 starts going down and tends around 0
-			// temp2 starts going up and tends around 100
-			// the mech_therm and comp_rpms come on for a random
-			// amount of time around 30 seconds
-
-			#define ON_TEMPERATURE	 -12
-			#define OFF_TEMPERATURE  -20
-			#define MECH_TEMPERATURE -16
-
-			static bool started = 0;
-			static float temp1_delta;
-			static float temp2_delta;
-
-			if (!started)
+		#if WITH_FAKE_COMPRESSOR
+			if (fakeCompressor::_compressor)
 			{
-				started = 1;
-				cur_temperature1 = -19;
-				temp1_delta = 1;
-
-				cur_temperature2 = 100;
-				temp2_delta = -1;
+				if (fakeCompressor::g_fridge_temp > _setpoint_high)
+					cur_mech_therm = 1;
+				if (fakeCompressor::g_fridge_temp < _setpoint_low)
+					cur_mech_therm = 0;
 			}
 			else
-			{
-				#if DEBUG_TSENSE>1
-					LOGD("   delta1=%0.3fF delta2=%0.3fF",temp1_delta,temp2_delta);
-				#endif
-				
-				cur_temperature1 += temp1_delta;
-				if (cur_temperature1 > 80)		// ambient
-					cur_temperature1 = 80;
+		#endif
+			cur_mech_therm = digitalRead(PIN_MECH_THERM);
 
-				cur_temperature2 += temp2_delta;
-				if (cur_temperature2 < 80)		// ambient
-					cur_temperature2 = 80;
-				if (cur_temperature2 > 212)		// boiling!
-					cur_temperature2 = 212;
-			}
-
-			if (!cur_comp_rpm && cur_temperature1>ON_TEMPERATURE)
-				cur_comp_rpm = 2400;	// better for graphing
-			if (cur_comp_rpm && cur_temperature1<OFF_TEMPERATURE)
-				cur_comp_rpm = 0;
-			cur_mech_therm = cur_temperature1 > MECH_TEMPERATURE ? 1 : 0;
-
-			float tdelta1 = random(100);
-			tdelta1 /= 500;		// 0 - 0.20
-			tdelta1 += 0.1;		// 0.1 - 0.30
-			if (cur_comp_rpm)
-				tdelta1 = -tdelta1;
-			temp1_delta += tdelta1;
-			if (temp1_delta > 2.0)
-				temp1_delta = 2.0;
-			if (temp1_delta < -2.0)
-				temp1_delta = -2.0;
-
-			if (cur_comp_rpm && temp2_delta < 0)
-				temp2_delta = 0;
-			if (!cur_comp_rpm && temp2_delta > 0)
-				temp2_delta = 0;
-				
-			float tdelta2 = random(100);
-			tdelta2 /= 500;		// 0 - 0.20
-			tdelta2 += 0.1;		// 0.1 - 0.30
-			if (!cur_comp_rpm)
-				tdelta2 = -tdelta2;
-			temp2_delta += tdelta2;
-			if (temp2_delta > 2.0)
-				temp2_delta = 2.0;
-			if (temp2_delta < -2.0)
-				temp2_delta = -2.0;
-
-		#endif	// !WITH_TSENSE
 
 		#if DEBUG_TSENSE
-			LOGD("TSENSE temp1=%0.3fF temp2=%0.3fF  mech=%d  rpm=%d",cur_temperature1,cur_temperature2,cur_mech_therm,cur_comp_rpm);
+			LOGD("TSENSE fridge=%0.3fF comp=%0.3fF  mech=%d  rpm=%d",
+				 centigradeToFarenheit(cur_fridge_temp),
+				 centigradeToFarenheit(cur_comp_temp),
+				 cur_mech_therm,
+				 cur_rpm);
 		#endif
 
 		#if WITH_DATA_LOG
 			fridgeLog_t log_rec;
-			log_rec.temp1 = cur_temperature1;
-			log_rec.temp2 = cur_temperature2;
+			log_rec.temp1 = cur_fridge_temp;
+			log_rec.temp2 = cur_comp_temp;
 			log_rec.mech  = cur_mech_therm;
-			log_rec.rpm   = cur_comp_rpm;
+			log_rec.rpm   = cur_rpm;
 			data_log.addRecord((logRecord_t) &log_rec);
 		#endif
 
+		// takes a a little over 2ms
 
-		#if WITH_TSENSE
-			// takes a a little over 2ms
-			int err = t_sense.measure();
-		#endif
+		t_sense.measure();
+
 	}
 
 
-	//--------------------------------------
-	// test compressor speed
-	//--------------------------------------
 
-#if WITH_PWM && TEST_COMPRESSOR_SPEED
+	// determine whether to run or stop the refrigerator
 
-	static uint32_t last_test;
-	if (now - last_test > 50)
+	static int last_mode = _fridge_mode;
+	if (last_mode != _fridge_mode)
 	{
-		last_test = now;
-
-		static bool test_sw;
-		bool sw = !digitalRead(PIN_BUTTON1);
-
-		static bool test_running;
-		static int  desired_rpm;
-		static uint32_t last_test_time;
-
-		if (test_sw != sw)
-		{
-			test_sw = sw;
-
-			#define DO_TEST_SEQUENCE	0
-			#if DO_TEST_SEQUENCE
-
-				display(0,"TEST(%s)",test_sw?"STARTING":"OFF");
-				desired_rpm = 1750;		// will be incremented at start
-				last_test_time = 0;
-				test_running = test_sw;
-				ledcWrite(PWM_CHANNEL, 0);
-
-			#else	// simply turn the PWM on or off
-
-				display(0,"TURNING_PUMP(%s)",test_sw?"ON":"OFF");
-				int duty = test_sw ? rpmToDuty(2000) : 0;
-				ledcWrite(PWM_CHANNEL, duty);
-
-			#endif
-		}
-
-		if (test_running && now-last_test_time > 10000)
-		{
-			desired_rpm += 250;
-			if (desired_rpm > 3500)
-			{
-				test_running = 0;
-				display(0,"TEST FINISHED!",0);
-				ledcWrite(PWM_CHANNEL, 0);
-			}
-			else
-			{
-				int duty = rpmToDuty(desired_rpm);
-				ledcWrite(PWM_CHANNEL, duty);
-				last_test_time = now;
-			}
-		}
+		last_mode = _fridge_mode;
+		LOGW("FridgeMode(%d)",_fridge_mode);
 	}
-#endif	// TEST_COMPRESSOR_SPEED
 
+	int rpm = 0;
+	if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
+		rpm = _min_rpm;
+	else if (_fridge_mode == FRIDGE_MODE_RUN_MAX)
+		rpm = _max_rpm;
+	else if (_fridge_mode == FRIDGE_MODE_RUN_USER)
+		rpm = _user_rpm;
+	else if (_fridge_mode == FRIDGE_MODE_RUN_MECH)
+		rpm = cur_mech_therm ? _user_rpm : 0;
+	else if (_fridge_mode == FRIDGE_MODE_RUN_TEMP)
+	{
+		if (cur_fridge_temp > _setpoint_high)
+			rpm = _user_rpm;
+		else if (cur_fridge_temp < _setpoint_low)
+			rpm = 0;
+		else
+			rpm = cur_rpm;
+	}
+
+	if (rpm != cur_rpm)
+		setRPM(rpm);
+
+	
 }	// stateMachine()
 
 
@@ -485,6 +403,35 @@ void Fridge::stateMachine()
 //=========================================================
 // loop()
 //=========================================================
+// We log the full floating point Centigrade temperature,
+// but we only publish values in Centigrade rounded to 0.1C.
+// Centigrade is more granular than Farenheit, but in the UI
+// we will round those again to the nearest 10't in F, and
+// precision is lost, so the values shown in the UI may not
+// agree with the (dummy) values that are shown in DEBUG_TSENSE
+
+float round1(float val)
+{
+	val +=
+		val > 0 ? 0.05 :
+		val < 0 ? -0.05 :
+		0.0;
+
+	int ival = val * 10;
+	return ((float)ival) / 10.0;
+}
+
+void publishTemp(const char *id, float cur_value)
+{
+	float cur = round1(cur_value);
+	float set = fridge->getFloat(id);
+	if (set != cur)
+	{
+		LOGD("   setting %s(%0.3fC)=%0.3fF",id,cur_value,cur);
+		fridge->setFloat(id, cur);
+	}
+}
+
 
 void Fridge::loop()
 {
@@ -494,30 +441,21 @@ void Fridge::loop()
 
 	ui_buttons.loop();
 
-	// publish changed values from sensors
-	// round temperatures to 0.1 degrees
+	// publish temperatures
+	
+	publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp);
+	publishTemp(ID_COMP_TEMP,cur_comp_temp);
+	publishTemp(ID_EXTRA_TEMP,cur_extra_temp);
 
-	int itemp1 = (cur_temperature1 * 10);
-	float ftemp1 = ((float)itemp1) / 10.0;
-	if (_temperature1 != ftemp1)
-		setFloat(ID_TEMPERATURE_1,ftemp1);
+	// publish other states
 
-	int itemp2 = (cur_temperature2 * 10);
-	float ftemp2 = ((float)itemp2) / 10.0;
-	if (_temperature2 != ftemp2)
-		setFloat(ID_TEMPERATURE_2,ftemp2);
-
-#if WITH_TSENSE
 	int terr = t_sense.getLastError();
 	if (_temp_error != terr)
 		setInt(ID_TEMP_ERROR,terr);
-#endif
-
 	if (_mech_therm != cur_mech_therm)
 		setBool(ID_MECH_THERM,cur_mech_therm);
-	if (_comp_rpm != cur_comp_rpm)
-		setInt(ID_COMP_RPM,cur_comp_rpm);
-
+	if (_comp_rpm != cur_rpm)
+		setInt(ID_COMP_RPM,cur_rpm);
 	if (_inv_error != v_sense._error_code)
 		setInt(ID_INV_ERROR,v_sense._error_code);
 	if (_inv_plus != v_sense._plus_on)

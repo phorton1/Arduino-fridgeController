@@ -41,10 +41,9 @@
 
 // Don't use the float if it >= TEMPERATURE_ERROR
 
-#define TEMPERATURE_ERROR  		1000.0
+#define TEMPERATURE_ERROR  		10000.0
 	// the temperature returned if there are any problems
-	// during getDegreesX()
-
+	// during getDegreesC()
 
 // Error Codes - see implementation for details
 
@@ -88,15 +87,11 @@ public:
 		// Starts a measurement on all devices on the bus.
 		// Sets the m_pending timer.
 
-	float getDegreesC(const DeviceAddress addr);
-	float getDegreesF(const DeviceAddress addr);
+	float getDegreesC(String str_addr);
 		// Return the temperature for a given sensor
 		// or TEMPERATURE_ERROR if pending or any problems
 	int getLastError() { return m_last_error; }
 		// call if any method fails
-
-	static const char *addrToStr(const DeviceAddress addr);
-
 
 private:
 
@@ -122,11 +117,11 @@ private:
 // For convenience, tSense.cpp enumerates all the DS18B20's
 // I have purchased and displays their position in init().
 
-extern const DeviceAddress MY_TSENSOR_01;
-extern const DeviceAddress MY_TSENSOR_02;
-extern const DeviceAddress MY_TSENSOR_03;
-extern const DeviceAddress MY_TSENSOR_04;
-extern const DeviceAddress MY_TSENSOR_05;
+extern const char *MY_TSENSOR_01;
+extern const char *MY_TSENSOR_02;
+extern const char *MY_TSENSOR_03;
+extern const char *MY_TSENSOR_04;
+extern const char *MY_TSENSOR_05;
 
 
 
