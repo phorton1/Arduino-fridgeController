@@ -111,6 +111,13 @@ describe what it is or does.
   default, the refridgerator will attempt to start and
   run the compressor continuously at its MIN_RPM value.
   Please see below for more discussion of FRIDGE_MODE.
+- **SETPOINT_HIGH** - float, degrees C, TEMP_RANGE, DISPLAY_STYLE_TEMPERATURE,
+  a temperature above which the compressor will be started in
+  the RUN_TEMP mode. Defaults to -12C (10.4F) well below freezing
+- **SETPOINT_LOW** - float, degrees C, TEMP_RANGE, DISPLAY_STYLE_TEMPERATURE,
+  a temperature below which the compressor will be turned off in
+  the RUN_TEMP mode. Defaults to -20C (-4.0C) a super solid freeze.
+  the freezing point of water.
 - **USER_RPM** - integer, default(2750) - sets the RPM at
   which the compressor will normally run in the initial
   impelementation.  Danfoss compressors can
@@ -171,11 +178,18 @@ describe what it is or does.
   to detect and count the DIAG_DIODE blinking, and the instantaneous
   values can be visualized in the webUI Plot tab.
 
-### Initial Algorithmic Control (configuration) Values
 
-This section revolves around the possible values for **FRIDGE_MODE**.
+Note that SETPOINT_HIGH must be above SETPOINT_LOW by
+at least 2C (3.6F). If, when setting either of these values,
+if that condition is not met, the other value will automatically
+be changed accordingly.
+
+
+### FRIDGE_MODE
+
+This section describes the possible values for **FRIDGE_MODE**.
 Initially, to get this project out the door and onto the boat, I
-will implement the following FRIDGE_MODES:
+will implement the following simple FRIDGE_MODES:
 
 - **OFF** - the controller will (or has) turned the compressor off.
 - **RUN_MIN** - the controller will start and continously run the
@@ -191,20 +205,7 @@ will implement the following FRIDGE_MODES:
   temperature rises above SETPOINT_HIGH, and will turn it off
   when the temperature falls below SETPOINT_LOW
 
-Which in turn introduces two new values
 
-**SETPOINT_HIGH** - float, degrees C, TEMP_RANGE, DISPLAY_STYLE_TEMPERATURE,
-a temperature above which the compressor will be started in
-the RUN_TEMP mode. Defaults to -12C (10.4F) well below freezing
-**SETPOINT_LOW** - float, degrees C, TEMP_RANGE, DISPLAY_STYLE_TEMPERATURE,
-a temperature below which the compressor will be turned off in
-the RUN_TEMP mode. Defaults to -20C (-4.0C) a super solid freeze.
-the freezing point of water.
-
-Note that SETPOINT_HIGH must be above SETPOINT_LOW by
-at least 6F (3.3C). If, when setting either of these values,
-if that condition is not met, the other value will automatically
-be changed accordingly.
 
 
 ### Dashboard (State) Values
@@ -212,17 +213,19 @@ be changed accordingly.
 State values are typically NOT stored in NVS, exist only in
 the ESP32 memory, and are reset to zero on a reboot.
 
-- **MECH_THERM** - bool, 0/1 default(0) - a raw digitalRead() of
-  the value of the ESP32 pin assigned to read the mechanical
-  thermostat.  This pin is an INPUT_PULLDOWN, with
-  3.3V being fed to the output pin.  It can be used in
-  RUN_MECH_XXX *FRIDGE_MODES*. See below for more information.
+- **STATUS** - String, a string that is sent to the WebUI to show
+  various error states, including TSENSE_ERRORS
 - **FRIDGE_TEMP** - float, degrees C, TEMP_RANGE, VALUE_STYLE_TEMPERATURE,
   set every TEMP_SENSE_SECS from the DS18B20 at FRIDGE_SENSE_ID
 - **COMP_TEMP** - float, degrees C, TEMP_RANGE, VALUE_STYLE_TEMPERATURE,
   set every TEMP_SENSE_SECS from the DS18B20 at COMP_SENSE_ID
 - **EXTRA_TEMP** - float, degrees C, TEMP_RANGE, VALUE_STYLE_TEMPERATURE,
   set every TEMP_SENSE_SECS from the DS18B20 at EXTRA_SENSE_ID
+- **MECH_THERM** - bool, 0/1 default(0) - a raw digitalRead() of
+  the value of the ESP32 pin assigned to read the mechanical
+  thermostat.  This pin is an INPUT_PULLDOWN, with
+  3.3V being fed to the output pin.  It can be used in
+  RUN_MECH_XXX *FRIDGE_MODES*. See below for more information.
 - **COMP_RPM** - integer, 2000-3500, set by the controller whenever
   it turns the compressor on, indicating the rpms the compressor
   is running at, or trying to achieve.
@@ -239,15 +242,18 @@ the ESP32 memory, and are reset to zero on a reboot.
   determines, logically, that the compressor is running, that is
   that INV_VAN>0 (the FAN is running), and there are no errors
   (INV_ERROR == 0). displayed as the blue diode.
-- **TEMP_ERROR** - integer 0..7; set to zero or one of the TSENSE_ERROR
-  constants in tSense.h if there is a problem reading the temperature
-  sensors.
 - **VOLTS_FRIDGE** float, 0..15, the actual voltage measured for FAN/DIODE+,
   which serves as a proxy for the compressor power supply
 - **VOLTS_5V** - float, 0..12, the voltage of the VUSB to the ESP32
   measured from the buck converter
 
 
+### UI Configuration Variables
+
+- **BACKLIGHT_SECS** - ingeger, default(15) max(120)
+  How long the LCD back light will stay on after booting or any button press.
+  A value of 120 means "forever", never turn the backlight off.
+  
 ## Initial Implementation Notes
 
 I have to try this to see if and how it works.   At this time I believe
@@ -263,14 +269,7 @@ stop trying and add a new diag code or messaging system to display it.
 
 ### LCD and buttons
 
-Initially the buttons will do nothing and the LCD will variously
-display whatever I think is interesting and relevant.  Eventually
-I envision being able to do 3 main things from the buttons:
-
-- modify the SETPOINT_LOW
-- modify the SETPOINT_HIGH
-- change the FRIDGE_MODE to start or stop the compressor
-  from the controller box.
+TBD
 
 ### WS2812 LED not initially implemented
 

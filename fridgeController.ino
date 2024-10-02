@@ -17,6 +17,8 @@ static valueIdType dash_items[] = {
 	ID_SETPOINT_HIGH,
 	ID_SETPOINT_LOW,
 
+	ID_STATUS,
+
 	ID_FRIDGE_TEMP,
 	ID_COMP_TEMP,
 	ID_EXTRA_TEMP,
@@ -26,7 +28,6 @@ static valueIdType dash_items[] = {
 	ID_INV_PLUS,
 	ID_INV_FAN,
 	ID_INV_COMPRESS,
-	ID_TEMP_ERROR,
 	ID_VOLTS_FRIDGE,
 	ID_VOLTS_5V,
 
@@ -36,6 +37,18 @@ static valueIdType dash_items[] = {
 
 
 static valueIdType config_items[] = {
+
+	ID_USER_RPM,
+	ID_MIN_RPM,
+	ID_MAX_RPM,
+	ID_FRIDGE_SENSE_ID,
+	ID_COMP_SENSE_ID,
+	ID_EXTRA_SENSE_ID,
+	ID_TEMP_SENSE_SECS,
+	ID_INV_SENSE_MS,
+
+	ID_BACKLIGHT_SECS,
+
 #if WITH_FAKE_COMPRESSOR
 	ID_USE_FAKE,
 	ID_RESET_FAKE,
@@ -51,28 +64,18 @@ static valueIdType config_items[] = {
 	ID_MAX_WARM_VEL,
 	ID_MAX_HEAT_VEL,
 	ID_MAX_DOWN_VEL,
-
 #endif
-
-	ID_USER_RPM,
-	ID_MIN_RPM,
-	ID_MAX_RPM,
-	ID_FRIDGE_SENSE_ID,
-	ID_COMP_SENSE_ID,
-	ID_EXTRA_SENSE_ID,
-	ID_TEMP_SENSE_SECS,
-	ID_INV_SENSE_MS,
     0
 };
 
 
-static enumValue fridgeModes[] = {
+enumValue fridgeModes[] = {
 	"Off",
-	"RUN_MIN",
-	"RUN_MAX",
-	"RUN_USER",
-	"RUN_MECH",
-	"RUN_TEMP",
+	"MIN",
+	"MAX",
+	"USER",
+	"MECH",
+	"TEMP",
     0};
 
 #define VALUE_STYLE_RO_TEMP		(VALUE_STYLE_READONLY | VALUE_STYLE_TEMPERATURE)
@@ -84,6 +87,8 @@ const valDescriptor fridge_values[] =
     {ID_DEVICE_NAME,		VALUE_TYPE_STRING,  VALUE_STORE_PREF,     	VALUE_STYLE_REQUIRED,   NULL,   	NULL,   FRIDGE_CONTROLLER },        // override base class element
 
 	{ID_FRIDGE_MODE,		VALUE_TYPE_ENUM,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_fridge_mode,     NULL, 	{ .enum_range = { 0, fridgeModes }} },
+	{ID_SETPOINT_HIGH,      VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_high,   (void *) Fridge::onSetPointChanged,	{ .float_range	= {-12,	-200+MIN_SETPOINT_DIF,	200+MIN_SETPOINT_DIF}},	},
+	{ID_SETPOINT_LOW,       VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_low,    (void *) Fridge::onSetPointChanged,	{ .float_range	= {-20,	-200-MIN_SETPOINT_DIF,	200-MIN_SETPOINT_DIF}},	},
 	{ID_USER_RPM,           VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_user_rpm,        NULL,	{ .int_range	= {2600, 2000, 3500}}, },
 	{ID_MIN_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_min_rpm,         NULL,	{ .int_range	= {2000, 2000, 3500}}, },
 	{ID_MAX_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_max_rpm,         NULL,	{ .int_range	= {3200, 2000, 3500}}, },
@@ -92,9 +97,8 @@ const valDescriptor fridge_values[] =
 	{ID_EXTRA_SENSE_ID,     VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_extra_sense_id,  NULL,	},
 	{ID_TEMP_SENSE_SECS,    VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_temp_sense_secs, NULL,	{ .int_range	= {10,  0,		300}},  },
 	{ID_INV_SENSE_MS,   	VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_inv_sense_ms,	NULL,	{ .int_range	= {20,  5,		1000}}, },
-	{ID_SETPOINT_HIGH,      VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_high,   NULL,	{ .float_range	= {-12,	-200,	200}},	},
-	{ID_SETPOINT_LOW,       VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_TEMPERATURE,(void *) &Fridge::_setpoint_low,    NULL,	{ .float_range	= {-20,	-200,	200}},	},
 
+	{ID_STATUS,      		VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_status_str,   	NULL,	},
 	{ID_FRIDGE_TEMP,        VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_fridge_temp,     NULL,	{ .float_range	= {0,	-200,	200}},	},
 	{ID_COMP_TEMP,          VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_comp_temp,       NULL,	{ .float_range	= {0,	-200,	200}},	},
 	{ID_EXTRA_TEMP,         VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_extra_temp,      NULL,	{ .float_range	= {0,	-200,	200}},	},
@@ -104,10 +108,10 @@ const valDescriptor fridge_values[] =
 	{ID_INV_PLUS,           VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_plus,        NULL,	},
 	{ID_INV_FAN,            VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_fan,         NULL,	},
 	{ID_INV_COMPRESS,       VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_compress,    NULL,	},
-	{ID_TEMP_ERROR,         VALUE_TYPE_INT,		VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_temp_error,      NULL,	{ .int_range	= {0,	0,	10}}, },
 	{ID_VOLTS_FRIDGE,		VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_fridge,	NULL,	{ .float_range	= {0,	0,	15}},	},
 	{ID_VOLTS_5V,			VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_5v,		NULL,	{ .float_range	= {0,	0,	15}},	},
 
+	{ID_BACKLIGHT_SECS,     VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_backlight_secs,  (void *) Fridge::onBacklightChanged, { .int_range	= {30,	15,	BACKLIGHT_ALWAYS_ON}}, },
 	{ID_CHART_LINK,			VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_chart_link, },
 
 #if WITH_FAKE_COMPRESSOR
@@ -148,6 +152,7 @@ int		Fridge::_inv_sense_ms;
 float	Fridge::_setpoint_high;
 float	Fridge::_setpoint_low;
 
+String  Fridge::_status_str;
 float	Fridge::_fridge_temp;
 float	Fridge::_comp_temp;
 float	Fridge::_extra_temp;
@@ -157,10 +162,10 @@ int		Fridge::_inv_error;
 bool	Fridge::_inv_plus;
 bool	Fridge::_inv_fan;
 bool	Fridge::_inv_compress;
-int		Fridge::_temp_error;
 float	Fridge::_volts_fridge;
 float	Fridge::_volts_5v;
 
+int		Fridge::_backlight_secs;
 String 	Fridge::_chart_link;
 
 

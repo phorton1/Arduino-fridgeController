@@ -2,6 +2,7 @@
 // uiButtons.cpp
 //-----------------------------------------
 
+#include "fridge.h"
 #include "uiButtons.h"
 #include "uiScreen.h"
 #include <myIOTLog.h>
@@ -11,7 +12,7 @@
 // buttons 1 and 2 implement long press auto-increment
 
 
-#define DEBUG_BUTTONS  1
+#define DEBUG_BUTTONS  0
 
 #if DEBUG_BUTTONS
     #define DBG_BUTTON(...)     LOGD(__VA_ARGS__)
@@ -22,6 +23,10 @@
 
 #define POLL_INTERVAL       20  // ms
     // handles debouncing too ..
+
+
+uiButtons ui_buttons(PIN_BUTTON1,PIN_BUTTON2,PIN_BUTTON3);
+
 
 
 void uiButtons::init_button(int num, int pin)
@@ -75,7 +80,7 @@ void uiButtons::loop()
                 {
                     DBG_BUTTON("BUTTON_PRESS(%d)",i);
                     m_state |= mask;
-                    // m_handled = ui_screen->onButton(i,BUTTON_TYPE_PRESS);
+                    m_handled = ui_screen.onButton(i,BUTTON_TYPE_PRESS);
                 }
                 else
                 {
@@ -84,7 +89,7 @@ void uiButtons::loop()
                     if (!m_handled)
                     {
                         DBG_BUTTON("BUTTON_CLICK(%d)",i);
-                        // ui_screen->onButton(i,BUTTON_TYPE_CLICK);
+                        ui_screen.onButton(i,BUTTON_TYPE_CLICK);
                     }
 
                     m_time = 0;
@@ -110,12 +115,12 @@ void uiButtons::loop()
                         dif = 2000 - dif;               // 2000..n
                         if (dif < 0) dif = 0;           // 2000..0
                         dif = dif / 200;                // 10..0
-                        if (dif == 0) dif = 1;          // 10..1
+                        // if (dif == 0) dif = 1;          // 10..1
 
-                        if (m_repeat_count % dif == 0)
+                        if (!dif || m_repeat_count % dif == 0)
                         {
                             DBG_BUTTON("BUTTON_REPEAT(%d)",i);
-                            // ui_screen->onButton(i,BUTTON_TYPE_REPEAT);
+                            ui_screen.onButton(i,BUTTON_TYPE_REPEAT);
                         }
 
                         m_repeat_count++;
@@ -127,7 +132,7 @@ void uiButtons::loop()
                     m_repeat_count = 0;
                     m_handled = true;
                     DBG_BUTTON("BUTTON_LONG_CLICK(%d)",i);
-                    // ui_screen->onButton(i,BUTTON_TYPE_LONG_CLICK);
+                    ui_screen.onButton(i,BUTTON_TYPE_LONG_CLICK);
                 }
             }
         }

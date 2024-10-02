@@ -75,6 +75,11 @@
 #define FRIDGE_CONTROLLER_VERSION	"fc0.2"
 #define FRIDGE_CONTROLLER_URL		"https://github.com/phorton1/Arduino-fridgeController"
 
+#define BACKLIGHT_ALWAYS_ON			120
+
+#define MIN_SETPOINT_DIF	2.0		// centigrade
+
+
 // enumerated FRIDGE_MODE types & ids
 
 #define FRIDGE_MODE_OFF				0
@@ -84,8 +89,11 @@
 #define FRIDGE_MODE_RUN_MECH		4
 #define FRIDGE_MODE_RUN_TEMP		5
 
+// main fridge config/state values
 
 #define ID_FRIDGE_MODE				"FRIDGE_MODE"
+#define ID_SETPOINT_HIGH            "SETPOINT_HIGH"
+#define ID_SETPOINT_LOW             "SETPOINT_LOW"
 #define ID_USER_RPM                 "USER_RPM"
 #define ID_MIN_RPM                  "MIN_RPM"
 #define ID_MAX_RPM                  "MAX_RPM"
@@ -94,10 +102,8 @@
 #define ID_EXTRA_SENSE_ID           "EXTRA_SENSE_ID"
 #define ID_TEMP_SENSE_SECS          "TEMP_SENSE_SECS"
 #define ID_INV_SENSE_MS         	"INV_SENSE_MS"
-#define ID_SETPOINT_HIGH            "SETPOINT_HIGH"
-#define ID_SETPOINT_LOW             "SETPOINT_LOW"
 
-
+#define ID_STATUS					"STATUS"
 #define ID_FRIDGE_TEMP              "FRIDGE_TEMP"
 #define ID_COMP_TEMP                "COMP_TEMP"
 #define ID_EXTRA_TEMP               "EXTRA_TEMP"
@@ -107,12 +113,17 @@
 #define ID_INV_PLUS                 "INV_PLUS"
 #define ID_INV_FAN                  "INV_FAN"
 #define ID_INV_COMPRESS             "INV_COMPRESS"
-#define ID_TEMP_ERROR               "TEMP_ERROR"
 #define ID_VOLTS_FRIDGE				"VOLTS_FRIDGE"
 #define ID_VOLTS_5V					"VOLTS_5V"
 
+// fridge UI config/state values
+
+#define ID_BACKLIGHT_SECS			"BACKLIGHT_SECS"
+
 #define ID_CHART_LINK				"CHART_LINK"
 
+
+// fake compressor config values
 
 #define ID_USE_FAKE					"USE_FAKE"
 #define ID_RESET_FAKE				"RESET_FAKE"
@@ -131,7 +142,8 @@
 #define ID_MAX_DOWN_VEL             "MAX_DOWN_VEL"
 
 
-
+extern enumValue fridgeModes[];
+	// in fridgeController.ino
 
 
 class Fridge : public myIOTDevice
@@ -144,7 +156,7 @@ public:
     virtual void setup() override;
     virtual void loop() override;
 
-    // config values
+    // fridge config values
 
 	static int 		_fridge_mode;
 	static int 		_user_rpm;
@@ -158,8 +170,9 @@ public:
 	static float	_setpoint_high;
 	static float	_setpoint_low;
 
-	// state values
+	// fridge state values
 
+	static String	_status_str;
 	static float	_fridge_temp;
 	static float	_comp_temp;
 	static float	_extra_temp;
@@ -169,19 +182,29 @@ public:
 	static bool		_inv_plus;
 	static bool		_inv_fan;
 	static bool		_inv_compress;
-	static int		_temp_error;
 	static float	_volts_fridge;
 	static float	_volts_5v;
 
-	// misc values
+	// ui config/state values
 
+	static int		_backlight_secs;
 	static String 	_chart_link;
+
+	// public states available to other objects
+
+	static int 		m_fridge_temp_error;
+	static int 		m_comp_temp_error;
+	static int 		m_extra_temp_error;
+
 
 	// methods
 
 	void setRPM(int rpm);
 	void stateMachine();
 	static void stateTask(void *param);
+	static void onBacklightChanged(const myIOTValue *value, int val);
+	static void onSetPointChanged(const myIOTValue *value, float val);
+
 
 	// extensions
 	

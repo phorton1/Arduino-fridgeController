@@ -12,7 +12,6 @@
 
 #include "fridge.h"
 #include "uiScreen.h"
-#include "uiButtons.h"
 #include "vSense.h"
 #include "tSense.h"
 #include <myIOTLog.h>
@@ -23,9 +22,11 @@
 #endif
 
 
-#define DEBUG_TSENSE	1
-
 #define WITH_DATA_LOG	1
+
+
+#define DEBUG_TSENSE	0
+#define DEBUG_SETVALUE	0
 
 
 //-----------------------------------------------
@@ -78,6 +79,12 @@ Fridge *fridge;
 OneWire one_wire(PIN_ONE_WIRE);
 tSense t_sense(&one_wire);
 
+// non myIOTDevice public static member variable initializations go here
+
+int Fridge::m_fridge_temp_error;
+int Fridge::m_comp_temp_error;
+int Fridge::m_extra_temp_error;
+
 
 //------------------------------
 // Application Vars
@@ -86,15 +93,12 @@ tSense t_sense(&one_wire);
 
 
 vSense v_sense;
-uiScreen  ui_screen;
-uiButtons ui_buttons(PIN_BUTTON1,PIN_BUTTON2,PIN_BUTTON3);
 
 float cur_fridge_temp;
 float cur_comp_temp;
 float cur_extra_temp;
 bool  cur_mech_therm;
-int	  cur_rpm;
-
+int cur_rpm;
 
 
 //=========================================================
@@ -115,33 +119,22 @@ void Fridge::setup()
 	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
 	
 	ui_screen.init();
-	ui_buttons.init();
 
 	myIOTDevice::setup();
-	LOGI("initial FRIDGE_MODE=%d",_fridge_mode);
-	
-	if (!getBool(ID_WIFI))
-	{
-		ui_screen.displayLine(1,"WIFI OFF");
-	}
-	else
-	{
-		iotConnectStatus_t status = getConnectStatus();
-		if (status == IOT_CONNECT_ALL)
-			ui_screen.displayLine(1,"AP_STA MODE");
-		else if (status == IOT_CONNECT_AP)
-			ui_screen.displayLine(1,"AP_MODE");
-		else if (status == IOT_CONNECT_STA)
-		{
-			String ip = WiFi.localIP().toString();
-			ui_screen.displayLine(1,ip.c_str());
-		}
-		else
-			ui_screen.displayLine(1,"WIFI ERROR");
-	}
+	randomSeed(time(NULL) + millis() + micros());
+
+	//----------------------------------------
+	// continuing generic myIOTDevice setup
+	//----------------------------------------
+	// set device to have a plotter tab
+	// the plot output is generated in vSense.cpp
+
+	setPlotLegend("batt,fan,diode");
+
+	// initialize the dataLog
+	// from a string on the stack
 
 #if WITH_DATA_LOG
-	// on the stack
 	String html = data_log.getChartHTML(
 		300,		// height
 		600,		// width
@@ -153,26 +146,33 @@ void Fridge::setup()
 		Serial.println(html.c_str());
 	#endif
 
-	// move to the heap
+	// create the iotWidget String for the chart
+	// and store it persistently on the heap
+
 	fridgeWidget.html = new String(html);
 	setDeviceWidget(&fridgeWidget);
+
+	// add the chart link value
 
 	_chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
 	_chart_link += getUUID();
 	_chart_link += "' target='_blank'>Chart</a>";
 #endif
 
-	setPlotLegend("batt,fan,diode");
-		// see vSense.cpp
+	//-------------------------------------
+	// Fridge specific intialization
+	//-------------------------------------
 
-	// ACTIVE INITIALIZATION
+	LOGI("initial FRIDGE_MODE=%d",_fridge_mode);
 
 #if WITH_FAKE_COMPRESSOR
 	fakeCompressor::init();
 #endif
 
 	v_sense.init();
-	t_sense.init();
+	t_sense.init();		// returns 0 or an error_number
+		// We ignore errors in initialization, but will notice
+		// errors on individual measurements.
 
 	LOGI("starting stateTask");
     xTaskCreatePinnedToCore(stateTask,
@@ -184,8 +184,6 @@ void Fridge::setup()
         ESP32_CORE_OTHER);
 
     proc_leave();
-
-	randomSeed(time(NULL));
 
     LOGD("Fridge::setup(%s) completed",getVersion());
 }
@@ -206,12 +204,34 @@ void Fridge::stateTask(void *param)
 }
 
 
+void Fridge::onBacklightChanged(const myIOTValue *value, int val)
+{
+	ui_screen.backlight(1);
+}
+
+
+
+void Fridge::onSetPointChanged(const myIOTValue *value, float val)
+{
+	if (!strcmp(value->getId(),ID_SETPOINT_HIGH))
+	{
+		float other_val = fridge->getFloat(ID_SETPOINT_LOW);
+		if (other_val > val - MIN_SETPOINT_DIF)
+			fridge->setFloat(ID_SETPOINT_LOW,val-MIN_SETPOINT_DIF);
+	}
+	else
+	{
+		float other_val = fridge->getFloat(ID_SETPOINT_HIGH);
+		if (other_val <  val + MIN_SETPOINT_DIF)
+			fridge->setFloat(ID_SETPOINT_HIGH,val+MIN_SETPOINT_DIF);
+	}
+}
 
 //==================================================
 // setRPM
 //==================================================
 // Great news!  The compressor speed can be more precisely
-// and flexibly controlled by PWM instead of a using bulky
+// and flexibly controlled by PWM instead of using bulky
 // relays and fixed resistors or complicated digital pots.
 //
 // Assuming the documentation is accurate and the compressor
@@ -272,6 +292,22 @@ void Fridge::setRPM(int rpm)
 // stateMachine()
 //=========================================================
 
+void measureTemperature(String id, float *rslt, int *err)
+{
+	if (id != "")
+	{
+		float temp = t_sense.getDegreesC(id);
+		if (temp < TEMPERATURE_ERROR)
+		{
+			*rslt = temp;
+			*err = 0;
+		}
+		else
+			*err = t_sense.getLastError();
+	}
+}
+
+
 void Fridge::stateMachine()
 {
 	uint32_t now = millis();
@@ -282,7 +318,7 @@ void Fridge::stateMachine()
 	// which is also how fast we run the fake compressor
 
 	static uint32_t last_vsense = 0;
-	if (now - last_vsense >= _inv_sense_ms)
+	if (!last_vsense || now - last_vsense >= _inv_sense_ms)
 	{
 		last_vsense = now;
 		#if WITH_FAKE_COMPRESSOR
@@ -298,29 +334,13 @@ void Fridge::stateMachine()
 	//---------------------------
 
 	static uint32_t last_tsense;
-	if (now - last_tsense > (_temp_sense_secs * 1000))
+	if (!last_tsense || now - last_tsense > (_temp_sense_secs * 1000))
 	{
 		last_tsense = now;
 
-		if (_fridge_sense_id != "")
-		{
-			float temp = t_sense.getDegreesC(_fridge_sense_id);
-			if (temp < TEMPERATURE_ERROR)
-				cur_fridge_temp = temp;
-		}
-		if (_comp_sense_id != "")
-		{
-			float temp = t_sense.getDegreesC(_comp_sense_id);
-			if (temp < TEMPERATURE_ERROR)
-				cur_comp_temp = temp;
-		}
-		if (_extra_sense_id != "")
-		{
-			float temp = t_sense.getDegreesC(_extra_sense_id);
-			if (temp < TEMPERATURE_ERROR)
-				cur_extra_temp = temp;
-		}
-
+		measureTemperature(_fridge_sense_id,&cur_fridge_temp,&m_fridge_temp_error);
+		measureTemperature(_comp_sense_id,&cur_comp_temp,&m_comp_temp_error);
+		measureTemperature(_extra_sense_id,&cur_extra_temp,&m_extra_temp_error);
 		// odd place for this
 
 		#if WITH_FAKE_COMPRESSOR
@@ -354,12 +374,11 @@ void Fridge::stateMachine()
 		#endif
 
 		// takes a a little over 2ms
+		// we ignore any errors returned by this
 
 		t_sense.measure();
 
 	}
-
-
 
 	// determine whether to run or stop the refrigerator
 
@@ -424,10 +443,24 @@ void publishTemp(const char *id, float cur_value)
 	float set = fridge->getFloat(id);
 	if (set != cur)
 	{
-		LOGD("   setting %s(%0.3fC)=%0.3fF",id,set,centigradeToFarenheit(set));
+		#if DEBUG_SETVALUE
+			LOGD("   setting %s(%0.3fC)=%0.3fF",id,set,centigradeToFarenheit(set));
+		#endif
 		fridge->setFloat(id, cur);
 	}
 }
+
+
+void addStatusInt(bool with_zeros, String &status, char *what, int value, bool cr_after=false)
+{
+	if (with_zeros || value)
+	{
+		status += what;
+		status += String(value);
+		status += cr_after ? "\n" : " ";
+	}
+}
+
 
 
 void Fridge::loop()
@@ -436,7 +469,7 @@ void Fridge::loop()
 
 	// handle UI
 
-	ui_buttons.loop();
+	ui_screen.loop();
 
 	// publish temperatures
 	
@@ -444,11 +477,18 @@ void Fridge::loop()
 	publishTemp(ID_COMP_TEMP,cur_comp_temp);
 	publishTemp(ID_EXTRA_TEMP,cur_extra_temp);
 
+	// publishs status
+
+	String status = "";
+	addStatusInt(0,status,"FTEMP_ERROR:",m_fridge_temp_error);
+	addStatusInt(0,status,"CTEMP_ERROR:",m_comp_temp_error);
+	addStatusInt(0,status,"ETEMP_ERROR:",m_extra_temp_error);
+
+	if (_status_str != status)
+		setString(ID_STATUS,status);
+
 	// publish other states
 
-	int terr = t_sense.getLastError();
-	if (_temp_error != terr)
-		setInt(ID_TEMP_ERROR,terr);
 	if (_mech_therm != cur_mech_therm)
 		setBool(ID_MECH_THERM,cur_mech_therm);
 	if (_comp_rpm != cur_rpm)

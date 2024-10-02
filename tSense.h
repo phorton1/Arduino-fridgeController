@@ -77,7 +77,8 @@ public:
 		// calls myDebug::display() to show the addresses
 		// 		of all devices on the bus.
 		// makes the initial measure() call.
-		// can return errors but they *msy* be ignored
+		// can return errors but they *msy* be ignored, since
+		// each measurement is a new oneWire request
 	bool pending();
 		// returns true if a measurement is pending
 		// 800ms timeout period.

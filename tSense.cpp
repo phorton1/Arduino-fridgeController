@@ -204,6 +204,7 @@ int16_t calculateRaw(const DeviceAddress addr, const uint8_t* scratchPad)
 // is entiredly turned on or off
 
 int tSense::init()
+	// return 0 or an error number
 {
 	LOGD("tSense::init()",0);
 	proc_entry();
@@ -285,6 +286,8 @@ int tSense::measure()
 		return TSENSE_OK;
 #endif
 
+	m_last_error = 0;
+
 	if (pending())
 		return tsenseError(TSENSE_ERROR_PENDING,NULL);
 
@@ -317,6 +320,8 @@ float tSense::getDegreesC(String str_addr)
 		return retval;
 	}
 #endif
+
+	m_last_error = 0;
 
 	uint8_t addr[8];
 	strToAddr(addr,str_addr);

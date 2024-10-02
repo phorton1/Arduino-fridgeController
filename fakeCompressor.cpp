@@ -26,7 +26,7 @@ int     fakeCompressor::g_sample_fan;
 int     fakeCompressor::g_sample_diode;
 
 
-#define DEBUG_FAKE  2
+#define DEBUG_FAKE  0
 
 
 static int      actual_rpm;
@@ -74,6 +74,11 @@ void fakeCompressor::run()
     if (last_use_fake != _use_fake)
     {
         last_use_fake = _use_fake;
+
+        fridge->m_fridge_temp_error = 0;
+        fridge->m_comp_temp_error = 0;
+        // fridge->m_extra_temp_error = 0;
+
         init();
     }
     if (!_use_fake)

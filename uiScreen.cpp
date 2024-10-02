@@ -1,33 +1,93 @@
 //-----------------------------------------
 // uiScreen.cpp
 //-----------------------------------------
+// rebooting currently only by turning controller off and then on
+//
+// BACKLIGHT
+//
+//      will go off if _backlight_secs != BACKLIGHT_ALWAYS_ON
+//      and there are no button presses for _backlight secs.
+//
+//      when the backlight goes off it returns to the MAIN_SCREEN,
+//      thus terminating any edit in progress
+//
+// BUTTONS
+//
+//    if the backlight is off any press eaten to turn backlight on
+//    otherwise:
+//
+//      left click - next screen
+//      middle_click - decrement value if editable
+//      right_click - increment value if editable
+//      left long click - save value (or execute command) if changed
+//
+// Notes:
+//
+//      We don't make any effort to normalize values that are being
+//      edited versus changes that could be made via the WebUI,
+//      serial or telnet ports, taking the attitude that the
+//      last man wins.
+//
+//      For temperatures we cache the DEGREE_TYPE at the moment
+//      we get the float for editing on the off chance someone
+//      changes DEGREE_TYPE while a temperature is being edited.
 
-#include "uiScreen.h"
+
 #include "fridge.h"
+#include "uiScreen.h"
+#include "uiButtons.h"
 #include <myIOTLog.h>
+#include <myIOTWebServer.h>
 #include <LiquidCrystal_I2C.h>
 
-
 #define DEBUG_SCREEN  1
-#define SHOW_BOOT_REASON  1
-
 
 #if DEBUG_SCREEN
-    #define DBG_SCREEN(...)     LOGV(__VA_ARGS__)
+    #define DBG_SCREEN(...)     LOGD(__VA_ARGS__)
 #else
     #define DBG_SCREEN(...)
 #endif
 
 
+#define LCD_ADDR    0x23        // current working fridge 1602A LCD ...
+// #define LCD_ADDR    0x27     // bilge_alarm and currently broken two
 #define LCD_LINE_LEN              16
+#define LCD_BUF_LEN               32    // for safety
 
-#define LCD_ADDR    0x23    // current working one ...
-// #define LCD_ADDR    0x27    // bilge_alarm, currently broken two
+#define REFRESH_MS                30
+#define ACTIVITY_TIMEOUT          15000
 
 
-LiquidCrystal_I2C lcd(LCD_ADDR,LCD_LINE_LEN,2);   // 20,4);
-    // set the LCD address to 0x27 for a 16 chars and 2 line display
+//--------------------------------
+// Screen definitions
+//--------------------------------
+// all iot value screens must follow all static screens
 
+#define SCREEN_MAIN             0
+#define SCREEN_IP_ADDRESS       1
+#define SCREEN_POWER            2
+#define FIRST_IOT_SCREEN        3
+#define NUM_IOT_SCREENS         9
+#define NUM_SCREENS             (FIRST_IOT_SCREEN + NUM_IOT_SCREENS)
+
+const char *edit_ids[NUM_IOT_SCREENS] = {
+    ID_REBOOT,
+    ID_FRIDGE_MODE,
+    ID_SETPOINT_HIGH,
+    ID_SETPOINT_LOW,
+    ID_DEGREE_TYPE,
+    ID_USER_RPM,
+    ID_MIN_RPM,
+    ID_MAX_RPM,
+    ID_BACKLIGHT_SECS };
+    
+
+
+//-------------------------------------
+// bootReason()
+//-------------------------------------
+
+#define SHOW_BOOT_REASON  1
 
 #if SHOW_BOOT_REASON
     // grumble, in ESP Core 3.0.4 there are many versions of rtc.h and
@@ -73,37 +133,475 @@ LiquidCrystal_I2C lcd(LCD_ADDR,LCD_LINE_LEN,2);   // 20,4);
 #endif
 
 
+//------------------------------------------------
+// implementation
+//------------------------------------------------
+
+
+uiScreen  ui_screen;
+LiquidCrystal_I2C lcd(LCD_ADDR,LCD_LINE_LEN,2);   // 20,4);
+    // set the LCD address to 0x27 for a 16 chars and 2 line display
+
 
 void uiScreen::init()
 {
+    ui_buttons.init();
+
     lcd.init();                      // initialize the lcd
-    lcd.backlight();
+    backlight(1);
 
     #if SHOW_BOOT_REASON
-        lcd.setCursor(0,0);
-        lcd.print(bootReason());
+        displayLine(0,"%s",bootReason());
         delay(2000);
     #endif
 
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print(0,Fridge::getDeviceType());
-    lcd.setCursor(0,1);
-    lcd.print(Fridge::getVersion());
+    displayLine(0,"%s",Fridge::getDeviceType());
+    displayLine(1,"%s",Fridge::getVersion());
+    delay(2000);
 }
 
 
 
+//------------------------------
+// utilities
+//------------------------------
 
-void uiScreen::displayLine(int line_num, const char *msg)
+void uiScreen::displayLine(int line_num, const char *format, ...)
 {
-    static char buf[17];
-    int len = strlen(msg);
-    if (len > 16) len = 16;
-    memset(buf,' ',16);
-    memcpy(buf,msg,len);
-    buf[16] = 0;
+    va_list var;
+    va_start(var, format);
+    char buffer[LCD_BUF_LEN];
+
+    vsnprintf(buffer,LCD_BUF_LEN,format,var);
+    int len = strlen(buffer);
+    if (len > LCD_LINE_LEN)
+        len = LCD_LINE_LEN;
+    while (len < LCD_LINE_LEN)
+    {
+        buffer[len++] = ' ';
+    }
+    buffer[len] = 0;
     lcd.setCursor(0,line_num);
-    lcd.print(buf);
+    lcd.print(buffer);
 }
+
+
+void printBufStr(char *buf, int width, const char *val, bool right=false)
+{
+    int len = strlen(val);
+    char *ptr = &buf[strlen(buf)];
+    while (right && len + strlen(ptr)<width)
+        strcat(ptr," ");
+    sprintf(&ptr[strlen(ptr)],"%s",val);
+    while (!right && strlen(ptr)<width)
+        strcat(ptr," ");
+}
+
+
+void printBufInt(char *buf, int width, int val, int err=0, bool right=false)
+{
+    char int_buf[12];
+    if (err)
+        sprintf(int_buf,"ERR%d ",err);
+    else
+        sprintf(int_buf,"%4d ",val);
+    printBufStr(buf, width, int_buf, right);
+}
+
+
+void printBufFloat(char *buf, int width, float val, int err=0, bool right=false)
+{
+    char temp_buf[12];
+    if (err)
+        sprintf(temp_buf,"ERR%d",err);
+    else
+    {
+        // static screen uses current fridge DEGREE_TYPE
+        int faren = fridge->getEnum(ID_DEGREE_TYPE);
+        sprintf(temp_buf,"%0.0f",faren ? centigradeToFarenheit(val) : val);
+        strcat(temp_buf,faren?"F":"C");
+    }
+    printBufStr(buf, width, temp_buf, right);
+}
+
+
+void uiScreen::backlight(int val)
+{
+    m_backlight = val;
+    m_activity_time = millis();
+    if (val)
+        lcd.backlight();
+    else
+        lcd.noBacklight();
+}
+
+
+
+//---------------------------------------
+// loop()
+//---------------------------------------
+
+void uiScreen::loop()
+{
+    uint32_t now = millis();
+
+    if (now - m_last_refresh > REFRESH_MS)
+    {
+        m_last_refresh = now;
+        int secs = fridge->_backlight_secs;
+        if (secs != BACKLIGHT_ALWAYS_ON)
+        {
+            if (now - m_activity_time > (secs * 1000))
+            {
+                setScreen(0);
+                backlight(0);
+            }
+        }
+
+        showScreen();
+    }
+
+    ui_buttons.loop();
+}
+
+
+
+//-----------------------------------
+// setScreen() && init_edit_value()
+//-----------------------------------
+
+void uiScreen::setScreen(int screen_num)
+{
+    DBG_SCREEN("uiScreen::setScreen(%d)",screen_num);
+    m_screen_num = screen_num;
+    init_edit_value();
+}
+
+
+void uiScreen::init_edit_value()
+{
+    m_iot_value = 0;
+    m_value_style = 0;
+    m_value_min = 0;
+    m_value_max = 0;
+    m_edit_value = 0;
+    m_initial_value = 0;
+    m_use_repeat = 0;
+
+    m_value_id = m_screen_num >= FIRST_IOT_SCREEN ?
+        edit_ids[m_screen_num - FIRST_IOT_SCREEN] : 0;
+    if (m_value_id)
+    {
+        m_iot_value = fridge->findValueById(m_value_id);
+        if (!m_iot_value)
+        {
+            LOGE("setScreen(%d) could not findValue(%s)",m_screen_num,m_value_id);
+            m_value_id = 0;
+            return;
+        }
+
+        m_value_type = m_iot_value->getType();
+        m_value_style = m_iot_value->getStyle();
+
+        // get the (integer) value
+
+        if (!(m_value_style & VALUE_STYLE_READONLY))
+        {
+            if (m_value_type == VALUE_TYPE_BOOL)
+                m_edit_value = m_iot_value->getBool();
+            else if (m_value_type == VALUE_TYPE_INT)
+                m_edit_value = m_iot_value->getInt();
+            else if (m_value_type == VALUE_TYPE_ENUM)
+                m_edit_value = m_iot_value->getEnum();
+            else if (m_value_type == VALUE_TYPE_FLOAT)
+            {
+                float float_value = m_iot_value->getFloat();
+                if (m_value_style & VALUE_STYLE_TEMPERATURE)
+                {
+                    m_degree_type = fridge->getEnum(ID_DEGREE_TYPE);
+                    if (m_degree_type)
+                        float_value = centigradeToFarenheit(float_value);
+                }
+
+                // round to integer
+                float_value += float_value < 0 ? -0.5 : 0.5;
+                m_edit_value = float_value;
+                
+                if (DEBUG_SCREEN > 1)
+                    DBG_SCREEN("init_edit_value(%d) id(%s) set int(%d) from float(%0.3f) DEGREE_TYPE(%d)",
+                        m_screen_num, m_value_id, m_edit_value, float_value,m_degree_type);
+            }
+            else if (m_value_type == VALUE_TYPE_COMMAND)
+            {
+                if (DEBUG_SCREEN > 1)
+                    DBG_SCREEN("init_edit_value(%d) COMMAND id(%s)",m_screen_num,m_value_id);
+                m_edit_value = 1;
+            }
+            else
+            {
+                LOGE("setScreen(%d) illegal value_type %s(%c)",m_screen_num,m_value_id,m_value_type);
+                m_value_id = 0;
+                m_iot_value = 0;
+                m_value_type = 0;
+                m_value_style = 0;
+                return;
+            }
+
+        }
+        else
+        {
+            LOGE("setScreen(%d) attempt to edit readonly value %s(%c)",m_screen_num,m_value_id,m_value_type);
+            m_value_id = 0;
+            m_iot_value = 0;
+            m_value_type = 0;
+            m_value_style = 0;
+            return;
+        }
+
+        if (m_value_type != VALUE_TYPE_COMMAND)
+        {
+            m_last_value = m_edit_value;
+            m_initial_value = m_edit_value;
+            m_iot_value->getIntRange(&m_value_min,&m_value_max);
+        }
+
+        // set repeat mode for BACKLIGHT_SECS, and USER/MIN,/MAX _RPM
+
+        m_use_repeat =
+            !strcmp(m_value_id,ID_BACKLIGHT_SECS) ||
+            !strcmp(m_value_id,ID_USER_RPM) ||
+            !strcmp(m_value_id,ID_MIN_RPM) ||
+            !strcmp(m_value_id,ID_MAX_RPM);
+        ui_buttons.setRepeatMask(m_use_repeat ? (0x2 | 0x4) : 0);
+    }
+}
+
+
+
+
+//-----------------------------------
+// onButton
+//-----------------------------------
+
+bool uiScreen::onButton(int button_num, int event_type)
+    // called from uiButtons::loop()
+{
+    if (DEBUG_SCREEN > 1)
+        DBG_SCREEN("uiScreen::onButton(%d,%d)",button_num,event_type);
+
+    // eat the keystroke to turn on backlight
+
+    if (!m_backlight)
+    {
+        backlight(1);
+        return true;
+    }
+    m_activity_time = millis();
+
+    if (button_num == 0)
+    {
+        if (event_type == BUTTON_TYPE_CLICK)
+        {
+            int new_screen = (m_screen_num + 1) % NUM_SCREENS;
+            setScreen(new_screen);
+        }
+        else if (event_type == BUTTON_TYPE_LONG_CLICK)
+        {
+            if (m_iot_value && m_edit_value != m_initial_value)
+            {
+                DBG_SCREEN("onButton accepting change id(%s) from(%d) to(%d)",
+                    m_value_id,m_initial_value, m_edit_value);
+
+                if (m_value_type == VALUE_TYPE_BOOL)
+                    m_iot_value->setBool(m_edit_value);
+                else if (m_value_type == VALUE_TYPE_INT)
+                    m_iot_value->setInt(m_edit_value);
+                else if (m_value_type == VALUE_TYPE_ENUM)
+                    m_iot_value->setEnum(m_edit_value);
+                else if (m_value_type == VALUE_TYPE_FLOAT)
+                {
+                    float float_value = m_edit_value;
+                    if (m_value_style & VALUE_STYLE_TEMPERATURE &&
+                        m_degree_type)
+                        float_value = farenheitToCentigrade(float_value);
+                    DBG_SCREEN("    set float(%0.3f) from int(%d) DEGREE_TYPE(%d)",
+                        float_value, m_edit_value, m_degree_type);
+                    m_iot_value->setFloat(float_value);
+                }
+                else if (m_value_type == VALUE_TYPE_COMMAND)
+                {
+                    m_iot_value->invoke();
+                    setScreen(SCREEN_MAIN);
+                }
+                init_edit_value();
+            }
+        }
+    }
+    else if (
+        m_iot_value &&
+        m_value_type != VALUE_TYPE_COMMAND &&
+        (event_type == BUTTON_TYPE_PRESS ||
+         event_type == BUTTON_TYPE_REPEAT))
+    {
+        if (button_num == 1)
+        {
+            m_edit_value--;
+            if (m_edit_value < m_value_min)
+                if (m_use_repeat)
+                    m_edit_value = m_value_min;
+                else
+                    m_edit_value = m_value_max;
+            return true;
+        }
+        else if (button_num == 2)
+        {
+            m_edit_value++;
+            if (m_edit_value > m_value_max)
+                if (m_use_repeat)
+                    m_edit_value = m_value_max;
+                else
+                    m_edit_value = m_value_min;
+            return true;
+        }
+    }
+
+    // otherwise,
+
+    return false;
+}
+
+
+
+
+//-----------------------------------
+// showScreen
+//-----------------------------------
+
+void uiScreen::showScreen()
+{
+    bool screen_changed = false;
+    static int last_screen_num = -1;
+    if (last_screen_num != m_screen_num)
+    {
+        last_screen_num = m_screen_num;
+        screen_changed = true;
+        lcd.clear();
+    }
+
+    if (m_screen_num == SCREEN_MAIN)
+    {
+        // Fridge Temp        ###F/C  ERR1..ERR7                width 5 incl/1 following spaces
+        // Compressor Temp    ###F/C  ERR1..ERR7                width 7 incl/3 following spaces
+        // Compressor RPM     ####    ERR1..ERR7                width 4 right justified
+        //
+        // Fridge Mode        Off_,MIN_,MAX_,USER,MECH,TEMP     width 5 incl folowing space
+        // WIFI State         W_OFF,STA,AP,AP_STA,W_ERR           width 7 incl following space
+        // SD State           __SD/NOSD                         width 4
+
+        static String last_main1;
+        static String last_main2;
+        char buf1[LCD_BUF_LEN] = {0};
+        char buf2[LCD_BUF_LEN] = {0};
+        const char *wifi = "W_OFF";
+
+        if (fridge->getBool(ID_WIFI))
+        {
+            iotConnectStatus_t mode = fridge->getConnectStatus();
+            if (mode == IOT_CONNECT_ALL)
+                wifi = "AP_STA";
+            else if (mode == IOT_CONNECT_AP)
+                wifi = "AP";
+            else if (mode == IOT_CONNECT_STA)
+                wifi = "STA";
+            else
+                wifi = "W_OFF";
+        }
+
+        printBufFloat(buf1,5,fridge->_fridge_temp,fridge->m_fridge_temp_error);
+        printBufFloat(buf1,7,fridge->_comp_temp,fridge->m_comp_temp_error);
+        printBufInt(buf1,4,fridge->_comp_rpm,fridge->_inv_error,true);
+
+        printBufStr(buf2,5,fridgeModes[fridge->_fridge_mode]);
+        printBufStr(buf2,7,wifi);
+        printBufStr(buf2,4,fridge->hasSD()?"  SD":"NOSD",true);
+
+        if (screen_changed || last_main1 != buf1)
+        {
+            last_main1 = buf1;
+            lcd.setCursor(0,0);
+            lcd.print(buf1);
+        }
+        if (screen_changed || last_main2 != buf2)
+        {
+            last_main2 = buf2;
+            lcd.setCursor(0,1);
+            lcd.print(buf2);
+        }
+
+    }
+    else if (m_screen_num == SCREEN_IP_ADDRESS)
+    {
+        if (screen_changed)
+        {
+            iotConnectStatus_t mode = fridge->getConnectStatus();
+            const char *mode_str =
+                !fridge->getBool(ID_WIFI) ? "WIFI_OFF" :
+                mode == WIFI_MODE_AP ? "WIFI_AP" :
+                mode == WIFI_MODE_STA ? "WIFI_STA" :
+                mode == WIFI_MODE_APSTA ? "WIFI_AP_STA" :
+                "WIFI_ERROR";
+            displayLine(0,"%s",mode_str);
+            displayLine(1,"%16s",mode?fridge->getString(ID_DEVICE_IP).c_str():"");
+        }
+    }
+    else if (m_screen_num == SCREEN_POWER)
+    {
+        if (screen_changed)
+        {
+            displayLine(0,"POWER");
+        }
+    }
+
+    // all other screens are iot values
+
+    else if (m_iot_value)
+    {
+        if (screen_changed || m_last_value != m_edit_value)
+        {
+            m_last_value = m_edit_value;
+            displayLine(0,m_value_id);
+            if (m_value_type == VALUE_TYPE_COMMAND)
+                displayLine(1,"%16s","confirm?");
+            else if (m_value_type == VALUE_TYPE_ENUM)
+                displayLine(1,"%16s",m_iot_value->getDesc()->enum_range.allowed[m_edit_value]);
+            else if (m_value_style && VALUE_STYLE_TEMPERATURE)
+                displayLine(1,"%15d%s",m_edit_value,m_degree_type?"F":"C");
+            else
+                displayLine(1,"%16d",m_edit_value);
+            screen_changed = true;
+        }
+    }
+
+
+    // set the editing/dirty indicator
+
+    if (m_iot_value)
+    {
+        bool dirty = m_edit_value != m_initial_value;
+        static bool last_dirty = 0;
+        if (screen_changed ||
+            last_dirty != dirty)
+        {
+            last_dirty = dirty;
+            lcd.setCursor(15,0);
+            lcd.print(dirty ? "*" : " ");
+        }
+    }
+}
+
+
+
+
+
+
 

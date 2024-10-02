@@ -43,5 +43,6 @@ class uiButtons
 
 
 extern uiButtons ui_buttons;
-    // in fridge.cpp
+
+
     
