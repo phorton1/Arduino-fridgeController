@@ -177,6 +177,13 @@ describe what it is or does.
   operational state.  At 50 times per second, it is plenty accurate
   to detect and count the DIAG_DIODE blinking, and the instantaneous
   values can be visualized in the webUI Plot tab.
+- **CALIB_VOLTS_INV** - a calibration factor used in reporting the
+  VOLT_INV value (FAN_DIODE+ pin as proxy for the inverter input
+  voltage), set by measuring with a multi-meter during
+  initial testing.
+- **CALIB_VOLTS_5V** - a calibration factor used in reporting the
+  VOLT_5V value (buck convertor output), set by measuring with a
+  multi-meter during initial testing.
 
 
 Note that SETPOINT_HIGH must be above SETPOINT_LOW by
@@ -242,7 +249,7 @@ the ESP32 memory, and are reset to zero on a reboot.
   determines, logically, that the compressor is running, that is
   that INV_VAN>0 (the FAN is running), and there are no errors
   (INV_ERROR == 0). displayed as the blue diode.
-- **VOLTS_FRIDGE** float, 0..15, the actual voltage measured for FAN/DIODE+,
+- **VOLTS_INV** float, 0..15, the actual voltage measured for FAN/DIODE+,
   which serves as a proxy for the compressor power supply
 - **VOLTS_5V** - float, 0..12, the voltage of the VUSB to the ESP32
   measured from the buck converter

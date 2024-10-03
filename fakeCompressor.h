@@ -55,6 +55,7 @@ public:
 	static int g_sample_plus;
 	static int g_sample_fan;
 	static int g_sample_diode;
+    static int g_sample_5V;
 
     // working parameters
     

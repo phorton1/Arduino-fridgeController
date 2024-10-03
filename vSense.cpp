@@ -30,6 +30,7 @@
 #define SAMPLE_PLUS		0
 #define SAMPLE_FAN		1
 #define SAMPLE_DIODE	2
+#define SAMPLE_5V		3
 
 #define THRESHOLD_PLUS_ON	1600
 #define THRESHOLD_FAN_ON	1600
@@ -44,12 +45,30 @@
 // implementation
 //---------------------------------------------
 
-#define NUM_SAMPLES	 5
+#define NUM_PINS			4
+#define NUM_PIN_SAMPLES	 	5
 
-static int circ[3][NUM_SAMPLES];
-static int ptr;
-static int sum[3];
-static int val[3];
+static int sample_circ_buffer[NUM_PINS][NUM_PIN_SAMPLES];
+static int cur_sample_circ_idx;
+static int sample_sum[NUM_PINS];
+static int sample_val[NUM_PINS];
+
+// the voltages are only updated every 100,s
+// through a separate 10 sample circular buffer
+
+#define VOLTAGE_INV			0
+#define VOLTAGE_5V			1
+
+#define VOLTAGE_INTERVAL	100
+#define NUM_VOLTAGES		2
+#define NUM_VOLT_SAMPLES	10
+
+bool volt_circ_started = 0;
+static float volt_circ_buf[NUM_VOLTAGES][NUM_VOLT_SAMPLES];
+static int cur_volt_circ_idx;
+
+
+vSense v_sense;
 
 
 void vSense::init()
@@ -104,22 +123,52 @@ void vSense::init()
 
 
 static void doRead(int i, int pin)
+	// sample a pin and add its value to the circular buffer
 {
-	sum[i] -= circ[i][ptr];
+	sample_sum[i] -= sample_circ_buffer[i][cur_sample_circ_idx];
 	int v = analogRead(pin);
-	circ[i][ptr] = v;
-	sum[i] += v;
-	val[i] = analogRead(pin);	// sum[i] / NUM_SAMPLES;
+	sample_circ_buffer[i][cur_sample_circ_idx] = v;
+	sample_sum[i] += v;
+
+	// YIKES - I'm not even using the circular buffer and don't remember
+	// where I left it vis-a-vis testing with real inverter!
+	sample_val[i] = analogRead(pin);	// sample_sum[i] / NUM_PIN_SAMPLES;
 }
 
 
-static void normalize400(int value, bool comma)
+static void addVoltSample(int idx, float volts)
+	// add a calculataed voltage to the voltage circular buffer
+	// the first time we will the buffer with whatever value
 {
-	float normal = (value * 400) / 4096;
-	String rslt = String(normal);
-	if (comma) rslt += ",";
-
+	if (!volt_circ_started)
+	{
+		for (int i=0; i<NUM_VOLT_SAMPLES; i++)
+		{
+			volt_circ_buf[idx][i] = volts;
+		}
+	}
+	else
+	{
+		volt_circ_buf[idx][cur_volt_circ_idx] = volts;
+	}
 }
+
+
+static float getVoltValue(int idx)
+	// return the average of the voltage circular buffer
+	// to 1 decimal place
+{
+	float val = 0;
+	for (int i=0; i<NUM_VOLT_SAMPLES; i++)
+	{
+		val += volt_circ_buf[idx][i];
+	}
+	val /= NUM_VOLT_SAMPLES;
+	val *= 10;
+	int i_val = val;
+	return ((float) i_val)/10;
+}
+
 
 
 
@@ -137,48 +186,84 @@ void vSense::sense()
 
 	#if TEST_VALUES
 
-		static int test_values[3] = {20,20,20};
-		for (int i=0; i<3; i++)
+		if (1)
 		{
-			// for testing plotter we allow negative numbers
-			// and can try really small numbers
-			test_values[i] += random(5) - 2;
+			static int test_values[NUM_PINS] = {20,20,20};
+			for (int i=0; i<NUM_PINS; i++)
+			{
+				// for testing plotter we allow negative numbers
+				// and can try really small numbers
+				test_values[i] += random(5) - 2;
 
-			if (test_values[i] >= 4095)
-				test_values[i] = 4095;
-			if (test_values[i] < -4096)
-				test_values[i] = -4096;
-			val[i] = test_values[i];
+				if (test_values[i] >= 4095)
+					test_values[i] = 4095;
+				if (test_values[i] < -4096)
+					test_values[i] = -4096;
+				sample_val[i] = test_values[i];
+			}
 		}
+		else
 
 	#elif WITH_FAKE_COMPRESSOR
 
 		if (fakeCompressor::_use_fake)
 		{
-			val[SAMPLE_PLUS] = fakeCompressor::g_sample_plus;
-			val[SAMPLE_FAN] = fakeCompressor::g_sample_fan;
-			val[SAMPLE_DIODE] = fakeCompressor::g_sample_diode;
+			sample_val[SAMPLE_PLUS] = fakeCompressor::g_sample_plus;
+			sample_val[SAMPLE_FAN] = fakeCompressor::g_sample_fan;
+			sample_val[SAMPLE_DIODE] = fakeCompressor::g_sample_diode;
+			sample_val[SAMPLE_5V] = fakeCompressor::g_sample_5V;
 		}
-
+		else
+		
 	#endif
 	{
 		doRead(SAMPLE_PLUS,PIN_S_PLUS);
 		doRead(SAMPLE_FAN,PIN_S_FAN);
 		doRead(SAMPLE_DIODE,PIN_S_DIODE);
-		ptr++;
-		if (ptr >= NUM_SAMPLES)
-			ptr = 0;
+		doRead(SAMPLE_5V,PIN_S_5V);
+		
+		cur_sample_circ_idx++;
+		if (cur_sample_circ_idx >= NUM_PIN_SAMPLES)
+			cur_sample_circ_idx = 0;
 	}
+
+
+	// every 100 ms add the voltages calculated from
+	// the samples to the voltage circular buffer and
+	// set the public variables to the average
+	// which is rounded to 1 decimal place by getVoltValue
+	// and adjusted herein by the calibration values
+
+	static uint32_t last_volt_sample;
+	if (now - last_volt_sample > VOLTAGE_INTERVAL)
+	{
+		last_volt_sample = now;
+
+		float volt_inv = VOLTS_PLUS(sample_val[SAMPLE_PLUS]);
+		float volt_5V = VOLTS_5V(sample_val[SAMPLE_5V]);
+
+		addVoltSample(VOLTAGE_INV,volt_inv);
+		addVoltSample(VOLTAGE_5V,volt_5V);
+		_volts_inv = getVoltValue(VOLTAGE_INV) * fridge->_calib_volts_inv;
+		_volts_5V = getVoltValue(VOLTAGE_5V) * fridge->_calib_volts_5v;
+
+		cur_volt_circ_idx = (cur_volt_circ_idx+1) % NUM_VOLT_SAMPLES;
+		volt_circ_started = 1;
+	}
+
 
 	#if WITH_WS
 
 		if (fridge->_plot_data)
 		{
+			// we plot the inverter instantaneous voltages,
+			// but not the 5V power supply
+			
 			static char plot_buf[120];
 			sprintf(plot_buf,"{\"plot_data\":[%d,%d,%d]}",
-				val[0],
-				val[1],
-				val[2]);
+				sample_val[0],
+				sample_val[1],
+				sample_val[2]);
 
 			// LOGD("Sending plot_buf(%s)",plot_buf);
 			// I am concerned with broadcasting to WS
@@ -198,9 +283,9 @@ void vSense::sense()
 	static uint32_t count_start;
 	static uint32_t prev_cycle;
 
-	bool p_on = val[SAMPLE_PLUS] > THRESHOLD_PLUS_ON;
-	bool f_on = val[SAMPLE_FAN] < THRESHOLD_FAN_ON;
-	bool d_on = val[SAMPLE_DIODE] > THRESHOLD_DIODE_ON;
+	bool p_on = sample_val[SAMPLE_PLUS] > THRESHOLD_PLUS_ON;
+	bool f_on = sample_val[SAMPLE_FAN] < THRESHOLD_FAN_ON;
+	bool d_on = sample_val[SAMPLE_DIODE] > THRESHOLD_DIODE_ON;
 
 	// reset everything if the power is off
 

@@ -33,8 +33,8 @@ class uiScreen
         
         valueIdType m_value_id;
         myIOTValue *m_iot_value;
-        valueType m_value_type;
-        valueStyle m_value_style;
+        valueType m_iot_type;
+        valueStyle m_iot_style;
         int m_edit_value;
         int m_degree_type;
         int m_value_min;

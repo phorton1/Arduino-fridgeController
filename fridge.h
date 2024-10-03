@@ -67,6 +67,16 @@
 #define PWM_RESOLUTION			8
 
 
+// hardware defined voltage divider sample to voltage functions
+// initial calibration defaults set by measurments.
+// Note that the 5V pin on an ESP32 with VUSB=5.00V is only about 4.5V.
+
+// The program was returning 4.4V, so the difference, so in that
+// the initial calibration constant would be 1 + (0.1/4.4)
+
+#define VOLTS_PLUS(sample)	((float) (((float)sample)/4095.0) * 3.3) / (2000.0/(10000.0+2000.0))
+#define VOLTS_5V(sample)	((float) (((float)sample)/4095.0) * 3.3) / (4700.0/(10000.0+4700.0))
+
 //------------------------
 // myIOT definition
 //------------------------
@@ -102,6 +112,8 @@
 #define ID_EXTRA_SENSE_ID           "EXTRA_SENSE_ID"
 #define ID_TEMP_SENSE_SECS          "TEMP_SENSE_SECS"
 #define ID_INV_SENSE_MS         	"INV_SENSE_MS"
+#define ID_CALIB_VOLTS_INV          "CALIB_VOLTS_INV"
+#define ID_CALIB_VOLTS_5V           "CALIB_VOLTS_5V"
 
 #define ID_STATUS					"STATUS"
 #define ID_FRIDGE_TEMP              "FRIDGE_TEMP"
@@ -113,7 +125,7 @@
 #define ID_INV_PLUS                 "INV_PLUS"
 #define ID_INV_FAN                  "INV_FAN"
 #define ID_INV_COMPRESS             "INV_COMPRESS"
-#define ID_VOLTS_FRIDGE				"VOLTS_FRIDGE"
+#define ID_VOLTS_INV				"VOLTS_INV"
 #define ID_VOLTS_5V					"VOLTS_5V"
 
 // fridge UI config/state values
@@ -169,6 +181,8 @@ public:
 	static int		_inv_sense_ms;
 	static float	_setpoint_high;
 	static float	_setpoint_low;
+	static float	_calib_volts_inv;
+	static float	_calib_volts_5v;
 
 	// fridge state values
 
@@ -182,7 +196,7 @@ public:
 	static bool		_inv_plus;
 	static bool		_inv_fan;
 	static bool		_inv_compress;
-	static float	_volts_fridge;
+	static float	_volts_inv;
 	static float	_volts_5v;
 
 	// ui config/state values

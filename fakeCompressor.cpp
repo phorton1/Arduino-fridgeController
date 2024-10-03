@@ -24,9 +24,12 @@ float   fakeCompressor::g_comp_temp;
 int     fakeCompressor::g_sample_plus;
 int     fakeCompressor::g_sample_fan;
 int     fakeCompressor::g_sample_diode;
+int     fakeCompressor::g_sample_5V;
 
 
 #define DEBUG_FAKE  0
+#define DEBUG_VOLTS 0
+
 
 
 static int      actual_rpm;
@@ -91,12 +94,44 @@ void fakeCompressor::run()
 
     uint32_t now = millis();
 
+    #define EVERY_SO_OFTEN  3000
+    bool every_so_often = 0;
+    static uint32_t last_often;
+    if (now - last_often > EVERY_SO_OFTEN)
+    {
+        last_often = now;
+        every_so_often = 1;
+    }
+
+    // set random 5V voltage +/- 0.5v
+    if (every_so_often)
+    {
+        float range = VOLTS_5V(4095);
+        float volts = random(100) - 50;
+        volts /= 100;
+        volts += 5;
+        float f_sample = 4095.0 * volts / range;     // convert to 0..4095 sample
+        g_sample_5V = f_sample;                      // convert to integer
+        #if DEBUG_VOLTS
+            LOGD("   fake 5V(%0.3f)  g_sample_5V=%d",volts,g_sample_5V);
+        #endif
+    }
+
     if (_comp_on)
     {
-        float voltage = random(100) - 50;
-        voltage /= 10;
-        voltage += 12;
-        g_sample_plus = (4096.0 * voltage/15.0);
+        // set random inverter voltage +/- 0.5V
+        if (!g_sample_plus || every_so_often)
+        {
+            float range = VOLTS_PLUS(4095);
+            float volts = random(100) - 50;
+            volts /= 100;
+            volts += 12;
+            float f_sample = 4095.0 * volts / range;     // convert to 0..4095 sample
+            g_sample_plus = f_sample;                      // convert to integer
+            #if DEBUG_VOLTS
+                LOGD("   fake 12V(%0.3f)  g_sample_plus=%d",volts,g_sample_plus);
+            #endif
+        }
 
         if (!cur_rpm && (last_start_attempt || actual_rpm))     // stopped by Fridge
         {
@@ -123,11 +158,7 @@ void fakeCompressor::run()
             init_for_start(0);
     }
 
-    // Do temperature modelling once per second for now.
-    // This helps to see the behavior of the model, but
-    // perhaps should be broken out into a separate routine
-    // that is only called when the values (tSense) would
-    // actually be used.
+    // Do temperature modelling once per second.
     //
     // The hard part is coming up with a reasonable model
     // of how the refridgerator and compressor warm up

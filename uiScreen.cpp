@@ -67,19 +67,22 @@
 #define SCREEN_IP_ADDRESS       1
 #define SCREEN_POWER            2
 #define FIRST_IOT_SCREEN        3
-#define NUM_IOT_SCREENS         9
+#define NUM_IOT_SCREENS         11
 #define NUM_SCREENS             (FIRST_IOT_SCREEN + NUM_IOT_SCREENS)
 
 const char *edit_ids[NUM_IOT_SCREENS] = {
-    ID_REBOOT,
-    ID_FRIDGE_MODE,
     ID_SETPOINT_HIGH,
     ID_SETPOINT_LOW,
-    ID_DEGREE_TYPE,
+    ID_FRIDGE_MODE,
     ID_USER_RPM,
     ID_MIN_RPM,
     ID_MAX_RPM,
-    ID_BACKLIGHT_SECS };
+    ID_BACKLIGHT_SECS,
+    ID_DEGREE_TYPE,
+    ID_WIFI,
+    ID_STA_SSID,
+    ID_REBOOT,
+};
     
 
 
@@ -170,7 +173,8 @@ void uiScreen::displayLine(int line_num, const char *format, ...)
 {
     va_list var;
     va_start(var, format);
-    char buffer[LCD_BUF_LEN];
+    char buffer[LCD_BUF_LEN * 2];
+        // allow for strings upto 63 characters
 
     vsnprintf(buffer,LCD_BUF_LEN,format,var);
     int len = strlen(buffer);
@@ -281,7 +285,7 @@ void uiScreen::setScreen(int screen_num)
 void uiScreen::init_edit_value()
 {
     m_iot_value = 0;
-    m_value_style = 0;
+    m_iot_style = 0;
     m_value_min = 0;
     m_value_max = 0;
     m_edit_value = 0;
@@ -300,23 +304,24 @@ void uiScreen::init_edit_value()
             return;
         }
 
-        m_value_type = m_iot_value->getType();
-        m_value_style = m_iot_value->getStyle();
+        m_iot_type = m_iot_value->getType();
+        m_iot_style = m_iot_value->getStyle();
 
         // get the (integer) value
+        // IOT_TYPE_STRING can be viewed, but not edited
 
-        if (!(m_value_style & VALUE_STYLE_READONLY))
+        if (!(m_iot_style & VALUE_STYLE_READONLY))
         {
-            if (m_value_type == VALUE_TYPE_BOOL)
+            if (m_iot_type == VALUE_TYPE_BOOL)
                 m_edit_value = m_iot_value->getBool();
-            else if (m_value_type == VALUE_TYPE_INT)
+            else if (m_iot_type == VALUE_TYPE_INT)
                 m_edit_value = m_iot_value->getInt();
-            else if (m_value_type == VALUE_TYPE_ENUM)
+            else if (m_iot_type == VALUE_TYPE_ENUM)
                 m_edit_value = m_iot_value->getEnum();
-            else if (m_value_type == VALUE_TYPE_FLOAT)
+            else if (m_iot_type == VALUE_TYPE_FLOAT)
             {
                 float float_value = m_iot_value->getFloat();
-                if (m_value_style & VALUE_STYLE_TEMPERATURE)
+                if (m_iot_style & VALUE_STYLE_TEMPERATURE)
                 {
                     m_degree_type = fridge->getEnum(ID_DEGREE_TYPE);
                     if (m_degree_type)
@@ -331,34 +336,38 @@ void uiScreen::init_edit_value()
                     DBG_SCREEN("init_edit_value(%d) id(%s) set int(%d) from float(%0.3f) DEGREE_TYPE(%d)",
                         m_screen_num, m_value_id, m_edit_value, float_value,m_degree_type);
             }
-            else if (m_value_type == VALUE_TYPE_COMMAND)
+            else if (m_iot_type == VALUE_TYPE_COMMAND)
             {
                 if (DEBUG_SCREEN > 1)
                     DBG_SCREEN("init_edit_value(%d) COMMAND id(%s)",m_screen_num,m_value_id);
                 m_edit_value = 1;
             }
-            else
+
+            // Strings don't "do" anything by implementation logic
+            // because there is no inc/dec case for their "value", so
+            // m_edit_value never changs, and they can't be "saved"
+
+            else if (m_iot_type != VALUE_TYPE_STRING)
             {
-                LOGE("setScreen(%d) illegal value_type %s(%c)",m_screen_num,m_value_id,m_value_type);
+                LOGE("setScreen(%d) illegal value_type %s(%c)",m_screen_num,m_value_id,m_iot_type);
                 m_value_id = 0;
                 m_iot_value = 0;
-                m_value_type = 0;
-                m_value_style = 0;
+                m_iot_type = 0;
+                m_iot_style = 0;
                 return;
             }
-
         }
         else
         {
-            LOGE("setScreen(%d) attempt to edit readonly value %s(%c)",m_screen_num,m_value_id,m_value_type);
+            LOGE("setScreen(%d) attempt to edit readonly value %s(%c)",m_screen_num,m_value_id,m_iot_type);
             m_value_id = 0;
             m_iot_value = 0;
-            m_value_type = 0;
-            m_value_style = 0;
+            m_iot_type = 0;
+            m_iot_style = 0;
             return;
         }
 
-        if (m_value_type != VALUE_TYPE_COMMAND)
+        if (m_iot_type != VALUE_TYPE_COMMAND)
         {
             m_last_value = m_edit_value;
             m_initial_value = m_edit_value;
@@ -407,28 +416,29 @@ bool uiScreen::onButton(int button_num, int event_type)
         }
         else if (event_type == BUTTON_TYPE_LONG_CLICK)
         {
-            if (m_iot_value && m_edit_value != m_initial_value)
+            if (m_iot_value &&
+                m_edit_value != m_initial_value)
             {
                 DBG_SCREEN("onButton accepting change id(%s) from(%d) to(%d)",
                     m_value_id,m_initial_value, m_edit_value);
 
-                if (m_value_type == VALUE_TYPE_BOOL)
+                if (m_iot_type == VALUE_TYPE_BOOL)
                     m_iot_value->setBool(m_edit_value);
-                else if (m_value_type == VALUE_TYPE_INT)
+                else if (m_iot_type == VALUE_TYPE_INT)
                     m_iot_value->setInt(m_edit_value);
-                else if (m_value_type == VALUE_TYPE_ENUM)
+                else if (m_iot_type == VALUE_TYPE_ENUM)
                     m_iot_value->setEnum(m_edit_value);
-                else if (m_value_type == VALUE_TYPE_FLOAT)
+                else if (m_iot_type == VALUE_TYPE_FLOAT)
                 {
                     float float_value = m_edit_value;
-                    if (m_value_style & VALUE_STYLE_TEMPERATURE &&
+                    if (m_iot_style & VALUE_STYLE_TEMPERATURE &&
                         m_degree_type)
                         float_value = farenheitToCentigrade(float_value);
                     DBG_SCREEN("    set float(%0.3f) from int(%d) DEGREE_TYPE(%d)",
                         float_value, m_edit_value, m_degree_type);
                     m_iot_value->setFloat(float_value);
                 }
-                else if (m_value_type == VALUE_TYPE_COMMAND)
+                else if (m_iot_type == VALUE_TYPE_COMMAND)
                 {
                     m_iot_value->invoke();
                     setScreen(SCREEN_MAIN);
@@ -439,7 +449,7 @@ bool uiScreen::onButton(int button_num, int event_type)
     }
     else if (
         m_iot_value &&
-        m_value_type != VALUE_TYPE_COMMAND &&
+        m_iot_type != VALUE_TYPE_COMMAND &&
         (event_type == BUTTON_TYPE_PRESS ||
          event_type == BUTTON_TYPE_REPEAT))
     {
@@ -543,11 +553,12 @@ void uiScreen::showScreen()
     {
         if (screen_changed)
         {
+            String sta_ssid = fridge->getString(ID_STA_SSID);
             iotConnectStatus_t mode = fridge->getConnectStatus();
             const char *mode_str =
                 !fridge->getBool(ID_WIFI) ? "WIFI_OFF" :
                 mode == WIFI_MODE_AP ? "WIFI_AP" :
-                mode == WIFI_MODE_STA ? "WIFI_STA" :
+                mode == WIFI_MODE_STA ? sta_ssid.c_str() : // "WIFI_STA" :
                 mode == WIFI_MODE_APSTA ? "WIFI_AP_STA" :
                 "WIFI_ERROR";
             displayLine(0,"%s",mode_str);
@@ -556,9 +567,18 @@ void uiScreen::showScreen()
     }
     else if (m_screen_num == SCREEN_POWER)
     {
-        if (screen_changed)
+        char v_buf[48];
+        static float volts_inv;
+        static float volts_5v;
+
+        if (screen_changed ||
+            volts_inv != fridge->_volts_inv ||
+            volts_5v != fridge->_volts_5v)
         {
-            displayLine(0,"POWER");
+            volts_inv = fridge->_volts_inv;
+            volts_5v = fridge->_volts_5v;
+            displayLine(0,"Inverter   %4.1fV",volts_inv);
+            displayLine(1,"Controller %4.1fV",volts_5v);
         }
     }
 
@@ -570,12 +590,16 @@ void uiScreen::showScreen()
         {
             m_last_value = m_edit_value;
             displayLine(0,m_value_id);
-            if (m_value_type == VALUE_TYPE_COMMAND)
+            if (m_iot_type == VALUE_TYPE_COMMAND)
                 displayLine(1,"%16s","confirm?");
-            else if (m_value_type == VALUE_TYPE_ENUM)
+            else if (m_iot_type == VALUE_TYPE_ENUM)
                 displayLine(1,"%16s",m_iot_value->getDesc()->enum_range.allowed[m_edit_value]);
-            else if (m_value_style && VALUE_STYLE_TEMPERATURE)
+            else if (m_iot_style & VALUE_STYLE_TEMPERATURE)
                 displayLine(1,"%15d%s",m_edit_value,m_degree_type?"F":"C");
+            else if (m_iot_type == VALUE_TYPE_BOOL)
+                displayLine(1,"%16s",m_edit_value?"On":"Off");
+            else if (m_iot_type == VALUE_TYPE_STRING)
+                displayLine(1,"%16s",m_iot_value->getString().c_str());
             else
                 displayLine(1,"%16d",m_edit_value);
             screen_changed = true;

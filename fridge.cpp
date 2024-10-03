@@ -90,10 +90,6 @@ int Fridge::m_extra_temp_error;
 // Application Vars
 //------------------------------
 
-
-
-vSense v_sense;
-
 float cur_fridge_temp;
 float cur_comp_temp;
 float cur_extra_temp;
@@ -471,36 +467,51 @@ void Fridge::loop()
 
 	ui_screen.loop();
 
-	// publish temperatures
-	
-	publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp);
-	publishTemp(ID_COMP_TEMP,cur_comp_temp);
-	publishTemp(ID_EXTRA_TEMP,cur_extra_temp);
+	// publish changes every couple of seconds
 
-	// publishs status
+	#define PUBLISH_INTERVAL 	2000
 
-	String status = "";
-	addStatusInt(0,status,"FTEMP_ERROR:",m_fridge_temp_error);
-	addStatusInt(0,status,"CTEMP_ERROR:",m_comp_temp_error);
-	addStatusInt(0,status,"ETEMP_ERROR:",m_extra_temp_error);
+	uint32_t now = millis();
+	static uint32_t last_publish;
+	if (now - last_publish > PUBLISH_INTERVAL)
+	{
+		last_publish = now;
 
-	if (_status_str != status)
-		setString(ID_STATUS,status);
+		// publish temperatures
 
-	// publish other states
+		publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp);
+		publishTemp(ID_COMP_TEMP,cur_comp_temp);
+		publishTemp(ID_EXTRA_TEMP,cur_extra_temp);
 
-	if (_mech_therm != cur_mech_therm)
-		setBool(ID_MECH_THERM,cur_mech_therm);
-	if (_comp_rpm != cur_rpm)
-		setInt(ID_COMP_RPM,cur_rpm);
-	if (_inv_error != v_sense._error_code)
-		setInt(ID_INV_ERROR,v_sense._error_code);
-	if (_inv_plus != v_sense._plus_on)
-		setInt(ID_INV_PLUS,v_sense._plus_on);
-	if (_inv_fan != v_sense._fan_on)
-		setInt(ID_INV_FAN,v_sense._fan_on);
-	if (_inv_error != v_sense._compress_on)
-		setInt(ID_INV_COMPRESS,v_sense._compress_on);
+		// publishs status
+
+		String status = "";
+		addStatusInt(0,status,"FTEMP_ERROR:",m_fridge_temp_error);
+		addStatusInt(0,status,"CTEMP_ERROR:",m_comp_temp_error);
+		addStatusInt(0,status,"ETEMP_ERROR:",m_extra_temp_error);
+		if (_status_str != status)
+			setString(ID_STATUS,status);
+
+		// publish other states
+
+		if (_mech_therm != cur_mech_therm)
+			setBool(ID_MECH_THERM,cur_mech_therm);
+		if (_comp_rpm != cur_rpm)
+			setInt(ID_COMP_RPM,cur_rpm);
+		if (_inv_error != v_sense._error_code)
+			setInt(ID_INV_ERROR,v_sense._error_code);
+		if (_inv_plus != v_sense._plus_on)
+			setBool(ID_INV_PLUS,v_sense._plus_on);
+		if (_inv_fan != v_sense._fan_on)
+			setBool(ID_INV_FAN,v_sense._fan_on);
+		if (_inv_error != v_sense._compress_on)
+			setBool(ID_INV_COMPRESS,v_sense._compress_on);
+
+		if (_volts_inv != v_sense._volts_inv)
+			setFloat(ID_VOLTS_INV,v_sense._volts_inv);
+		if (_volts_5v != v_sense._volts_5V)
+			setFloat(ID_VOLTS_5V,v_sense._volts_5V);
+	}
 }
 
 
