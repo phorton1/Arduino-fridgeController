@@ -1,4 +1,7 @@
 //-------------------------------------------------
+// Provides fake data for testing dataLogging and
+// charting on a bare ESP32 without sensors or display
+
 #pragma once
 #include "fridge.h"
 #include <myIOTLog.h>
@@ -21,9 +24,9 @@ public:
         LOGW("fakeCompressor::init(%0.3f)",_ambient);
         g_fridge_temp = -16;    // start in middle of default setpoint range
         g_comp_temp = _ambient;
-        g_sample_plus = 0;
-        g_sample_fan = 0;
-        g_sample_diode = 0;
+        // g_sample_plus = 0;
+        // g_sample_fan = 0;
+        // g_sample_diode = 0;
         init_for_start(1);
     }
 
@@ -37,7 +40,7 @@ public:
 
     static float _ambient;      // ambient temperature, default(80F) in Centigrade
 
-    static int   _fake_period;      
+    static int   _fake_period;
     static float _cooling_accel;
     static float _warming_accel;
     static float _heating_accel;
@@ -46,7 +49,7 @@ public:
     static float _max_warm_vel;
     static float _max_heat_vel;
     static float _max_down_vel;
-    
+
     // output parameters, sampled to tSense.cpp and vSense.cpp
 
     static float g_fridge_temp;

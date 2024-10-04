@@ -246,9 +246,12 @@ the ESP32 memory, and are reset to zero on a reboot.
   voltage of the FAN- pin from the invertor, is above a certain threshold.
   displayed as the yellow diode.
 - **INV_COMPRESS** - integer 0/1; set to one when the controller
-  determines, logically, that the compressor is running, that is
-  that INV_VAN>0 (the FAN is running), and there are no errors
-  (INV_ERROR == 0). displayed as the blue diode.
+  sets the RPMs of the compressor to a non-zero value.
+  Displayed as the blue diode.
+  It is up to the user to understand that the blue diode does not
+  necessarily mean a running compressor and they must also look
+  at the RED DIAG DIODE and see that it is not flashing for
+  this determination.
 - **VOLTS_INV** float, 0..15, the actual voltage measured for FAN/DIODE+,
   which serves as a proxy for the compressor power supply
 - **VOLTS_5V** - float, 0..12, the voltage of the VUSB to the ESP32

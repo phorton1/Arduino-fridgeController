@@ -1,0 +1,31 @@
+When running with _fake_period=10, the refrig's ambient warmup to the setpoints
+seems reasonable, but the compressor runs for too short of an amount of time.
+```
+--->fridge(-14.667) comp(26.670) rpm(0) dFridge(0.417543) dComp(0.000000)
+--->fridge(-14.253) comp(26.670) rpm(0) dFridge(0.413368) dComp(0.000000)
+--->fridge(-13.844) comp(26.670) rpm(0) dFridge(0.409234) dComp(0.000000)
+--->fridge(-13.439) comp(26.670) rpm(0) dFridge(0.405142) dComp(0.000000)
+--->fridge(-13.038) comp(26.670) rpm(0) dFridge(0.401091) dComp(0.000000)
+--->fridge(-12.641) comp(26.670) rpm(0) dFridge(0.397080) dComp(0.000000)
+--->fridge(-12.248) comp(26.670) rpm(0) dFridge(0.393109) dComp(0.000000)
+--->fridge(-11.859) comp(26.670) rpm(0) dFridge(0.389178) dComp(0.000000)
+    setRPM(2600)  desired_ma(3.800)  duty(180)
+    fakeCompressor initiating start attempt at rpm(2600)
+    FAN OFF
+--->fridge(-21.473) comp(36.670) rpm(2600) dFridge(-9.614714) dComp(10.000000)
+    setRPM(0)
+    init_for_start(0)
+    fakeCompressor stopped by Fridge
+    FAN ON
+--->fridge(-30.992) comp(66.670) rpm(2600) dFridge(-9.518567) dComp(29.999996)
+--->fridge(-30.415) comp(26.670) rpm(0) dFridge(0.576619) dComp(-80.000000)
+--->fridge(-29.844) comp(26.670) rpm(0) dFridge(0.570853) dComp(0.000000)
+--->fridge(-29.279) comp(26.670) rpm(0) dFridge(0.565144) dComp(0.000000)
+--->fridge(-28.720) comp(26.670) rpm(0) dFridge(0.559493) dComp(0.000000)
+--->fridge(-28.166) comp(26.670) rpm(0) dFridge(0.553898) dComp(0.000000)
+--->fridge(-27.618) comp(26.670) rpm(0) dFridge(0.548359) dComp(0.000000)
+--->fridge(-27.075) comp(26.670) rpm(0) dFridge(0.542875) dComp(0.000000)
+```
+Overall at this point, with these constants, the compressor duty cycle is less than
+1-2%, it should be more like 20%.   How should I modify the constants to provide
+a more resasonable duty cycle without messing things up?

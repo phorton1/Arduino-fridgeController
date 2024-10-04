@@ -121,17 +121,18 @@ const valDescriptor fridge_values[] =
     {ID_RESET_FAKE,         VALUE_TYPE_COMMAND, VALUE_STORE_PROG,       VALUE_STYLE_NONE,    NULL,                       			(void *) fakeCompressor::init },
 	{ID_FAKE_COMP_ON,		VALUE_TYPE_BOOL,    VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_comp_on,		NULL,	{ .int_range	= {0,	0,	1}}, },
 	{ID_FAKE_PROB_ERROR,	VALUE_TYPE_INT,     VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_prob_error,	NULL,	{ .int_range	= {3,	0,	100}}, },
-	{ID_FAKE_AMBIENT,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_ambient,		NULL,	{ .float_range	= {26.67, 20, 40}},	},
 
+	{ID_FAKE_AMBIENT,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_ambient,		NULL,	{ .float_range	= {26.67, 20, 40}},	},
 	{ID_FAKE_PERIOD,		VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_fake_period,		NULL,	{ .int_range	= {4, 	1, 10000}},	},
-	{ID_COOLING_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling_accel,	NULL,	{ .float_range	= {0.2, -1000, 1000}},	},
-	{ID_WARMING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_warming_accel,	NULL,	{ .float_range	= {0.05, -1000, 1000}},	},
-	{ID_HEATING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating_accel,	NULL,	{ .float_range	= {0.3, -1000, 1000}},	},
-	{ID_COOLDOWN_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown_accel,	NULL,	{ .float_range	= {0.1, -1000, 1000}},	},
-	{ID_MAX_COOL_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_cool_vel, 	NULL,	{ .float_range	= {1.8, -1000, 1000}},	},
-	{ID_MAX_WARM_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_warm_vel, 	NULL,	{ .float_range	= {1, -1000, 1000}},	},
-	{ID_MAX_HEAT_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_heat_vel, 	NULL,	{ .float_range	= {2, -1000, 1000}},	},
-	{ID_MAX_DOWN_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_down_vel, 	NULL,	{ .float_range	= {1.5, -1000, 1000}},	},
+	
+	{ID_COOLING_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling_accel,	NULL,	{ .float_range	= {0.1, -1000, 1000}},	},
+	{ID_WARMING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_warming_accel,	NULL,	{ .float_range	= {0.02, -1000, 1000}},	},
+	{ID_HEATING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating_accel,	NULL,	{ .float_range	= {0.5, -1000, 1000}},	},
+	{ID_COOLDOWN_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown_accel,	NULL,	{ .float_range	= {0.4, -1000, 1000}},	},
+	{ID_MAX_COOL_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_cool_vel, 	NULL,	{ .float_range	= {2, 	-1000, 1000}},	},
+	{ID_MAX_WARM_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_warm_vel, 	NULL,	{ .float_range	= {0.2, -1000, 1000}},	},
+	{ID_MAX_HEAT_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_heat_vel, 	NULL,	{ .float_range	= {1.6, -1000, 1000}},	},
+	{ID_MAX_DOWN_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_down_vel, 	NULL,	{ .float_range	= {1.8, -1000, 1000}},	},
 #endif                                          
 
 };

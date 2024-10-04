@@ -56,7 +56,7 @@
 
 #define REFRESH_MS                30
 #define ACTIVITY_TIMEOUT          15000
-
+    // if no activity for this long, we return to the main screen
 
 //--------------------------------
 // Screen definitions
@@ -261,6 +261,11 @@ void uiScreen::loop()
                 backlight(0);
             }
         }
+
+        // activity timeout
+
+        if (m_screen_num && now - m_activity_time > ACTIVITY_TIMEOUT)
+            setScreen(0);
 
         showScreen();
     }

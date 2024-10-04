@@ -167,6 +167,7 @@ public:
 
     virtual void setup() override;
     virtual void loop() override;
+	virtual bool showDebug(String path) override;
 
     // fridge config values
 

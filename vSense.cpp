@@ -291,7 +291,6 @@ void vSense::sense()
 
 	if (!p_on)
 	{
-
 		f_on = false;
 		d_on = false;
 		_error_code = 0;
@@ -384,17 +383,6 @@ void vSense::sense()
 		LOGI("RESTART CLEARING ERROR(%d)",_error_code);
 	}
 
-	// finally, we empirically determine that the
-	// compressor is running if the fan is running
-	// and there are no errorw.
-
-
-	bool c_on = _fan_on && !_error_code;
-	if (_compress_on != c_on)
-	{
-		_compress_on = c_on;
-		digitalWrite(LED_COMPRESS_ON,_compress_on);
-	}
-
+	// The blue diode is controlled by Fridge::setRPM()
 
 }

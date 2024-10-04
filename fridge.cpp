@@ -27,7 +27,8 @@
 
 #define DEBUG_TSENSE	0
 #define DEBUG_SETVALUE	0
-
+#define DEBUG_CHART_DATA_HTTP  0
+	// 0 turns off myIOTHTTP display of /chart_data request headers
 
 //-----------------------------------------------
 // data_log setup
@@ -55,7 +56,8 @@
 		{"rpm",		LOG_COL_TYPE_UINT32,		500,	},
 	};
 
-	myIOTDataLog data_log("fridgeData",4,fridge_cols);
+	myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
+		// 0 = debug_send_data LEVEL
 
 	myIOTWidget_t fridgeWidget = {
 		"fridgeWidget",
@@ -278,6 +280,11 @@ void Fridge::setRPM(int rpm)
 		LOGI("setRPM(0)");
 	}
 
+	// finally, we empirically determine that the
+	// compressor is running if the fan is running
+	// and there are no errorw.
+
+	digitalWrite(LED_COMPRESS_ON,rpm);
 	ledcWrite(PWM_CHANNEL, pwm_duty);
 	cur_rpm = rpm;
 }
@@ -377,6 +384,8 @@ void Fridge::stateMachine()
 	}
 
 	// determine whether to run or stop the refrigerator
+	// We only set rpms if v_sense._plus_on, if the conmpressor has power,
+	// otherwise we turn off the rpms.
 
 	static int last_mode = _fridge_mode;
 	if (last_mode != _fridge_mode)
@@ -386,22 +395,25 @@ void Fridge::stateMachine()
 	}
 
 	int rpm = 0;
-	if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
-		rpm = _min_rpm;
-	else if (_fridge_mode == FRIDGE_MODE_RUN_MAX)
-		rpm = _max_rpm;
-	else if (_fridge_mode == FRIDGE_MODE_RUN_USER)
-		rpm = _user_rpm;
-	else if (_fridge_mode == FRIDGE_MODE_RUN_MECH)
-		rpm = cur_mech_therm ? _user_rpm : 0;
-	else if (_fridge_mode == FRIDGE_MODE_RUN_TEMP)
+	if (v_sense._plus_on)
 	{
-		if (cur_fridge_temp > _setpoint_high)
+		if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
+			rpm = _min_rpm;
+		else if (_fridge_mode == FRIDGE_MODE_RUN_MAX)
+			rpm = _max_rpm;
+		else if (_fridge_mode == FRIDGE_MODE_RUN_USER)
 			rpm = _user_rpm;
-		else if (cur_fridge_temp < _setpoint_low)
-			rpm = 0;
-		else
-			rpm = cur_rpm;
+		else if (_fridge_mode == FRIDGE_MODE_RUN_MECH)
+			rpm = cur_mech_therm ? _user_rpm : 0;
+		else if (_fridge_mode == FRIDGE_MODE_RUN_TEMP)
+		{
+			if (cur_fridge_temp > _setpoint_high)
+				rpm = _user_rpm;
+			else if (cur_fridge_temp < _setpoint_low)
+				rpm = 0;
+			else
+				rpm = cur_rpm;
+		}
 	}
 
 	if (rpm != cur_rpm)
@@ -489,6 +501,15 @@ void Fridge::loop()
 		addStatusInt(0,status,"FTEMP_ERROR:",m_fridge_temp_error);
 		addStatusInt(0,status,"CTEMP_ERROR:",m_comp_temp_error);
 		addStatusInt(0,status,"ETEMP_ERROR:",m_extra_temp_error);
+
+		if (!v_sense._plus_on && _fridge_mode)
+		{
+			if (status != "")
+				status += "\n";
+			status += "FRIDGE_MODE(";
+			status += String(_fridge_mode);
+			status += ") while INV_PLUS (power) OFF!!";
+		}
 		if (_status_str != status)
 			setString(ID_STATUS,status);
 
@@ -504,7 +525,7 @@ void Fridge::loop()
 			setBool(ID_INV_PLUS,v_sense._plus_on);
 		if (_inv_fan != v_sense._fan_on)
 			setBool(ID_INV_FAN,v_sense._fan_on);
-		if (_inv_error != v_sense._compress_on)
+		if (_inv_compress != v_sense._compress_on)
 			setBool(ID_INV_COMPRESS,v_sense._compress_on);
 
 		if (_volts_inv != v_sense._volts_inv)
@@ -519,6 +540,17 @@ void Fridge::loop()
 //----------------------------------------
 // chart API
 //----------------------------------------
+
+// virtual
+bool Fridge::showDebug(String path)	// override;
+{
+	// called by myIOTHttp while path still has /custom at front
+	#if !DEBUG_CHART_DATA_HTTP
+		if (path.startsWith("/custom/chart_data/fridgeData"))
+			return 0;
+	#endif
+	return 1;
+}
 
 
 

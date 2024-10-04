@@ -47,13 +47,16 @@ extern int cur_rpm;
     // in fridge.cpp
 
 
+// note that g_sample_fan is pulled LOW when the
+// fan is on, so it must be initialized to g_sample_on
+
 void fakeCompressor::init_for_start(bool all)
     // init_for_start(1) called from init
     // init_for_start(0) called from actual start attempt
 {
     LOGD("    init_for_start(%d)",all);
 
-    g_sample_fan = 0;
+    g_sample_fan = g_sample_plus;
     g_sample_diode = 0;
 
     actual_rpm = 0;
@@ -73,6 +76,9 @@ void fakeCompressor::init_for_start(bool all)
 void fakeCompressor::run()
     // called every _inv_sense_ms (20ms) by Fridge
 {
+    // (1) if the whole feature turned off or on, we clear any
+    // fake errors on the fridge, call init(), and if off, return
+
     static bool last_use_fake = 0;
     if (last_use_fake != _use_fake)
     {
@@ -80,17 +86,14 @@ void fakeCompressor::run()
 
         fridge->m_fridge_temp_error = 0;
         fridge->m_comp_temp_error = 0;
-        // fridge->m_extra_temp_error = 0;
 
         init();
     }
     if (!_use_fake)
         return;
 
-    // first section contains "rapid" behavior when starting/stopping
-    // the compressor to emulate the voltages in that process.
-    // Once the compressor is running, this section reaches a
-    // steady state (with the exception of possible future random faults)
+    // (2) if using the feature we always occastionally
+    // set a fake random 5V voltage +/- 0.5v
 
     uint32_t now = millis();
 
@@ -103,7 +106,6 @@ void fakeCompressor::run()
         every_so_often = 1;
     }
 
-    // set random 5V voltage +/- 0.5v
     if (every_so_often)
     {
         float range = VOLTS_5V(4095);
@@ -116,6 +118,24 @@ void fakeCompressor::run()
             LOGD("   fake 5V(%0.3f)  g_sample_5V=%d",volts,g_sample_5V);
         #endif
     }
+
+
+    // (3) check for _comp_on changes and re-init for start if it changes
+
+    static bool last_comp_on;
+    if (last_comp_on != _comp_on)
+    {
+        LOGD("fakeCompressor::_comp_on(%d)",_comp_on);
+        last_comp_on = _comp_on;
+        init_for_start(0);
+        g_sample_plus = 0;
+    }
+
+
+    // (4) emulate "rapid" behavior when starting/stopping
+    // the compressor to emulate the voltages in that process.
+    // Once the compressor is running, this section reaches a
+    // steady state (with the exception of possible future random faults)
 
     if (_comp_on)
     {
@@ -141,30 +161,40 @@ void fakeCompressor::run()
         else if (cur_rpm && !actual_rpm && !last_start_attempt)
         {
             last_start_attempt = now;
-            g_sample_fan = g_sample_plus;
             LOGI("fakeCompressor initiating start attempt at rpm(%d)",cur_rpm);
         }
         else if (last_start_attempt && now-last_start_attempt > 2000)
         {
             last_start_attempt = 0;
             actual_rpm = cur_rpm ? cur_rpm : 2000;
+
+            g_sample_fan = 0;   // fan is turned on by setting sample to zero
+                // we don't emulate inverter behavior.
+                // we turn the yellow fan LED on when the start attempt completes
+
             LOGI("fakeCompressor completed start attempt rpm(%d)",actual_rpm);
         }
-    }
-    else
-    {
-        g_sample_plus = 0;
-        if (last_start_attempt)
-            init_for_start(0);
-    }
 
-    // Do temperature modelling once per second.
+        // special case to handle turning the fan off when its on
+        // and we are not running or trying a start attempt.
+        // This happens when the FAKE_RESET command is issued
+        
+        else if (g_sample_plus && !g_sample_fan && !last_start_attempt && !actual_rpm)
+        {
+            g_sample_fan = g_sample_plus;   // turns the fan off
+        }
+    }
+    
+    // (5) Do temperature modelling once per second.
     //
-    // The hard part is coming up with a reasonable model
+    // The hard part is/was coming up with a reasonable model
     // of how the refridgerator and compressor warm up
     // or cool down based on their current temperatures
     // and the actual_rpm, and developing nice parameters
-    // for controlling that process.
+    // for controlling that process.  As a result there
+    // are a bunch of if 1/0 sections for different attempts
+    // to make it work better.  I LEFT IT WITH REASONABLE
+    // VALUES FOR _fake_period=1 and fridge->_temp_sense_secs==1
 
     static uint32_t last_time = 0;
     static uint32_t prev_time = 0;
@@ -176,126 +206,131 @@ void fakeCompressor::run()
 
         if (prev_time)
         {
-            // Calculate time elapsed since last iteration
+            // Calculate time elapsed since last iteration and a scaling factor.
 
             uint32_t elapsed = current_time - prev_time;
+            float scale = ((float) elapsed) / ((float)_fake_period);
 
-            // The basic idea is that we keep the fridge_delta and
-            // comp_delta as the degrees per _fake_period (default 60secs=1 minute)
-            // that their temperature will change, and add the appropriate fraction,
-            // baed on _elapsed, of those to the current temperatures for each time
-            // through this code.
+            // basic algorithm uses newtonian modelling with position, velocity,
+            // and acelleration concepts. Each call sets
             //
-            // We use newtoning concepts of velocity and per second-squared acceleration.
-            // The increased benefit of rpms falls off more quickly for cooling than it does for heating.
-            // We use the fact that the ambient temperature matters when the fridge is warming,
-            // or the compressor is cooling down.
+            //      temp = temp_start + secs*vel + secs*accel^2
 
             float fridge_accel = 0;
             float comp_accel = 0;
             float cool_rpm_factor = 0;
             float heat_rpm_factor = 0;
-            float fridge_ambient_factor = 0;
-            float comp_ambient_factor = 0;
+            float comp_ambient_factor = 1;
 
             if (actual_rpm)     // compressor on, decrease fridge temperature and increase comp temperature
             {
                 cool_rpm_factor = 1 + ((actual_rpm - 2000) / 1800) * 0.5;
                 heat_rpm_factor = 1 + ((actual_rpm - 2000) / 1500) * 0.5;
-                    // 1..1.5 for min_rpm ... max_rpm, more for heating than cooling
-
-                // the rpm factor will multiply the acceleration by 1-1.5, so _cooling_accel and
-                // _heating_accel are the "minimum" accelerations, a fact user must be aware of.
-                // a more complicated log() or exp() function and/or parameter might be needed.
 
                 fridge_accel = -cool_rpm_factor * _cooling_accel;
                 comp_accel = heat_rpm_factor * _heating_accel;
 
-                if (fridge_vel > 0)
-                    fridge_vel *= 0.6;
-                if (comp_vel < 0)
-                    fridge_vel *= 0.5;
+                #if 1 // OPTION TO de-accelerate more quickly on vel vs rpm mismatches
+                      // creates more realistic behavior but also artifacts
+                    if (fridge_vel > 0)
+                        fridge_vel *= 1 - (0.5 * scale);
+                    if (comp_vel < 0)
+                        comp_vel *= 1 - (0.5 * scale);
+                #endif
 
             }
             else    // compressor off, increase fridge temperature and decreate comptemperature
             {
-                // ambient difference affects compressor more because fridge is insulated
 
-                #if 1
+                #if 1   // OPTION to try to smooth cooldown graph near ambient
 
-                    fridge_ambient_factor = 1;
-                    comp_ambient_factor = 1;
+                    #define AMBIENT_THRESHOLD  20.0
 
-                #else
-
-                    float fridge_ambient_diff = _ambient - g_fridge_temp;
-                    float comp_ambient_diff = g_comp_temp - _ambient;
-
-                    fridge_ambient_factor = std::exp(-fridge_ambient_diff / 100.0);
-                    comp_ambient_factor = std::exp(-comp_ambient_diff / 60.0);
-
-                    // fridge_ambient_factor = fridge_ambient_diff > 0 ? 0.01 + fridge_ambient_diff / 100 : 0;
-                    // comp_ambient_factor = comp_ambient_diff > 0 ? 0.01 + comp_ambient_diff / 60 : 0;
-
-                    if (fridge_ambient_factor > 1)
-                        fridge_ambient_factor = 1;
-                    if (comp_ambient_factor > 1)
-                        comp_ambient_factor = 1;
-
+                    float dif = g_comp_temp - _ambient;
+                    if (dif <= AMBIENT_THRESHOLD)
+                    {
+                        float ratio = dif / AMBIENT_THRESHOLD;
+                        comp_ambient_factor = ratio * ratio;
+                        #if DEBUG_FAKE
+                            LOGD("--> dif(%0.3f) ratio(%0.3f) factor(%0.3f)",dif,ratio,comp_ambient_factor);
+                        #endif
+                    }
                 #endif
 
-                fridge_accel = fridge_ambient_factor * _warming_accel;
-                comp_accel = - comp_ambient_factor * _cooldown_accel;
+                fridge_accel = _warming_accel;
+                comp_accel = -_cooldown_accel;
 
-                if (fridge_vel < 0)
-                    fridge_vel *= 0.6;
-                if (comp_vel > 0)
-                    fridge_vel *= 0.5;
+                #if 1 // OPTION TO de-accelerate more quickly on vel vs rpm mismatches
+                    if (fridge_vel < 0)
+                        fridge_vel *= 1 - (0.2 * scale);
+                    if (comp_vel > 0)
+                        fridge_vel *= 1 - (0.2 * scale);
+                #endif
             }
 
+            #if 1   // OPTION to add some randomness to accel model
+                float rand_fridge_factor = 1 + scale * (((float) random(40)) / 100.0) - 0.2;
+                float rand_comp_factor =   1 + scale * (((float) random(40)) / 100.0) - 0.2;
+                fridge_accel *= rand_fridge_factor;
+                comp_accel *= rand_comp_factor;
+            #endif
 
-            fridge_accel =  elapsed * fridge_accel / _fake_period;
-            comp_accel = elapsed * comp_accel / _fake_period;
 
-            // add in a 0.8..1.2 random factor for each
+            #if 1   // OPTION Various attempt to get period scaling working
+                fridge_accel *= ((float)_fake_period);
+                comp_accel *= ((float)_fake_period);
+            #elif 0
+                fridge_accel *= scale;
+                comp_accel *= scale;
+            #endif
 
-            float rand_fridge_factor = 1 + (((float) random(40)) / 100.0) - 0.2;
-            float rand_comp_factor =   1 + (((float) random(40)) / 100.0) - 0.2;
+            // add the accelleration to the veloicty
+            // and factor in the ambient effect
 
-            fridge_vel += fridge_accel * rand_fridge_factor;
-            comp_vel += comp_accel * rand_comp_factor;
+            fridge_vel += fridge_accel;
+            comp_vel += comp_accel;
+            comp_vel *= comp_ambient_factor;
 
-            if (actual_rpm)
-            {
-                if (fridge_vel < -_max_cool_vel)
-                    fridge_vel = -_max_cool_vel;
-                if (comp_vel > _max_heat_vel)
-                    comp_vel = _max_heat_vel;
-            }
-            else
-            {
-                if (fridge_vel > _max_warm_vel)
-                    fridge_vel = _max_warm_vel;
-                if (comp_vel < -_max_down_vel)
-                    comp_vel = -_max_down_vel;
-            }
+            // constrain the velocities to the scaled maximums
+
+            #if 1
+                if (actual_rpm)
+                {
+                    if (fridge_vel < -_max_cool_vel * scale)
+                        fridge_vel = -_max_cool_vel * scale;
+                    if (comp_vel > _max_heat_vel * scale)
+                        comp_vel = _max_heat_vel * scale;
+                }
+                else
+                {
+                    if (fridge_vel > _max_warm_vel * scale)
+                        fridge_vel = _max_warm_vel * scale;
+                    if (comp_vel < -_max_down_vel * scale)
+                        comp_vel = -_max_down_vel * scale;
+                }
+            #endif
+
+            // BASIC NEWTONIAN - add the velocity to the temperature
 
             g_fridge_temp += fridge_vel;
             g_comp_temp += comp_vel;
 
+            // debugging
+
             #if DEBUG_FAKE
-                LOGD("--> fridge rpm(%d) fridge(%0.2f) comp(%0.2f) elapsed(%d)",
+                LOGD("--> fridge rpm(%d) fridge(%0.2f) comp(%0.2f) elapsed(%d) period(%d) scale(%0.3f)",
                      actual_rpm,
                      g_fridge_temp,
                      g_comp_temp,
-                     elapsed);
+                     elapsed,
+                     _fake_period,
+                     scale);
                 #if DEBUG_FAKE > 1
-                    LOGD("        fridge vel(%0.3f) rand(%0.2f) accel(%0.3f) rpm_factor(%0.3d) ambient_factor(%0.3f)",
+                    LOGD("        fridge vel(%0.3f) rand(%0.2f) accel(%0.3f) rpm_factor(%0.3d)",
                          fridge_vel,
                          rand_fridge_factor,
                          fridge_accel,
-                         cool_rpm_factor,
-                         fridge_ambient_factor);
+                         cool_rpm_factor);
                     LOGD("        comp   vel(%0.3f) rand(%0.2f) accel(%0.3f) rpm_factor(%0.3d) ambient_factor(%0.3f)",
                          comp_vel,
                          rand_comp_factor,
@@ -304,23 +339,33 @@ void fakeCompressor::run()
                          comp_ambient_factor);
                 #endif
             #endif
-            
+
+
+            // constrain temps to model
 
             if (g_fridge_temp > _ambient)
                 g_fridge_temp = _ambient;
-            if (g_fridge_temp < -100)
-                g_fridge_temp = -100;
-
             if (g_comp_temp < _ambient)
                 g_comp_temp = _ambient;
-            if (g_comp_temp > 100)  // boiling
-                g_comp_temp = 100;
 
+            #if 1   // OPTION constrain temps to reasonable values
+                if (g_fridge_temp < -100)
+                    g_fridge_temp = -100;
+                if (g_comp_temp > 100)  // boiling
+                    g_comp_temp = 100;
+            #endif
 
-        }
+        }   // ! first time through th eloop
+
+        // first time (and thereafter) through the loop sets prev_time
+        // so we can get elapsed correctly
+
         prev_time = current_time;
 
-    }
+    }   // 1 second temperature modelling
+
+}   // fakeCompressor::run()
 
 
-}
+// end of fakeCompressor.cpp
+
