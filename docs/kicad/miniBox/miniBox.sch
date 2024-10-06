@@ -73,22 +73,11 @@ F 3 "~" H 3350 2000 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L power:GND #PWR03
-U 1 1 66CA8018
-P 3800 2300
-F 0 "#PWR03" H 3800 2050 50  0001 C CNN
-F 1 "GND" V 3800 2100 50  0000 C CNN
-F 2 "" H 3800 2300 50  0001 C CNN
-F 3 "" H 3800 2300 50  0001 C CNN
-	1    3800 2300
-	0    -1   1    0   
-$EndComp
-$Comp
 L Device:R R2
 U 1 1 66CA801E
 P 3650 2300
 F 0 "R2" V 3550 2300 50  0001 C CNN
-F 1 "1.2K" V 3650 2300 50  0000 C CNN
+F 1 "1.5K" V 3650 2300 50  0000 C CNN
 F 2 "0_my_footprints2:resistor" V 3580 2300 50  0001 C CNN
 F 3 "~" H 3650 2300 50  0001 C CNN
 	1    3650 2300
@@ -103,7 +92,7 @@ F 1 "YELLOW" H 3350 2200 50  0000 C CNN
 F 2 "0_my_footprints2:led_small_yellow" H 3350 2300 50  0001 C CNN
 F 3 "~" H 3350 2300 50  0001 C CNN
 	1    3350 2300
-	-1   0    0    1   
+	1    0    0    1   
 $EndComp
 Text GLabel 2800 2300 0    50   Input ~ 0
 FAN-
@@ -149,8 +138,6 @@ F 3 "" H 5350 2150 50  0001 C CNN
 $EndComp
 Text Notes 4050 5450 3    61   ~ 0
 BATT-\nBATT+
-Text GLabel 3050 2000 0    50   Input ~ 0
-FAN_DIODE+
 Wire Wire Line
 	3050 2000 3200 2000
 Text Notes 750  950  0    50   ~ 0
@@ -197,8 +184,8 @@ Text GLabel 5350 2450 0    50   Input ~ 0
 DIAG_DIODE
 Text GLabel 5350 2650 0    50   Input ~ 0
 T
-Text Notes 5700 2661 0    61   ~ 0
-red\nblack\norange\nyellow\ngreen\nblue\nwhite
+Text Notes 5650 2761 0    61   ~ 0
+red\nblack\norange\nyellow\ngreen\nblue\nwhite\nbrown
 Text GLabel 2250 3700 0    50   Input ~ 0
 C
 Text GLabel 4050 3600 2    50   Input ~ 0
@@ -329,4 +316,8 @@ F 3 "" H 5350 2750 50  0001 C CNN
 	1    5350 2750
 	0    1    -1   0   
 $EndComp
+Text GLabel 3050 2000 0    50   Input ~ 0
+FAN_DIODE+
+Text GLabel 3800 2300 2    50   Input ~ 0
+FAN_DIODE+
 $EndSCHEMATC
