@@ -19,6 +19,7 @@ static valueIdType dash_items[] = {
 	ID_FRIDGE_TEMP,
 	ID_COMP_TEMP,
 	ID_INV_ERROR,
+	ID_CLEAR_ERROR,
 	ID_EXTRA_TEMP,
 	ID_MECH_THERM,
 	ID_COMP_RPM,
@@ -99,6 +100,8 @@ const valDescriptor fridge_values[] =
 	{ID_INV_SENSE_MS,   	VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_inv_sense_ms,	NULL,	{ .int_range	= {20,  5,		1000}}, },
 	{ID_CALIB_VOLTS_INV,    VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_calib_volts_inv, NULL,	{ .float_range	= {1,	0.5,	1.5}},	},
 	{ID_CALIB_VOLTS_5V,     VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_calib_volts_5v,  NULL,	{ .float_range	= {1,	0.5,	1.5}},	},
+
+    {ID_CLEAR_ERROR,        VALUE_TYPE_COMMAND, VALUE_STORE_PROG,       VALUE_STYLE_NONE,    NULL,                       			(void *) Fridge::clearInvError },
 
 	{ID_STATUS,      		VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_status_str,   	NULL,	},
 	{ID_FRIDGE_TEMP,        VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_RO_TEMP,	(void *) &Fridge::_fridge_temp,     NULL,	{ .float_range	= {0,	-200,	200}},	},
@@ -185,10 +188,12 @@ void setup()
     Serial.begin(MY_IOT_ESP32_CORE == 3 ? 115200 : 921600);
     delay(1000);
 
-	ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-	ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
-	ledcWrite(PWM_CHANNEL, 0);
-
+	#if WITH_PWM
+		ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+		ledcAttachPin(PIN_PUMP_PWM, PWM_CHANNEL);
+		ledcWrite(PWM_CHANNEL, 0);
+	#endif
+	
     Fridge::setDeviceType(FRIDGE_CONTROLLER);
     Fridge::setDeviceVersion(FRIDGE_CONTROLLER_VERSION);
     Fridge::setDeviceUrl(FRIDGE_CONTROLLER_URL);

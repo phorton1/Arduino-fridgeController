@@ -30,7 +30,7 @@
 	//      - emulates a refridgerator that warms up	//
 
 
-
+#define WITH_PWM	1
 
 
 //=========================================================
@@ -114,6 +114,8 @@
 #define ID_INV_SENSE_MS         	"INV_SENSE_MS"
 #define ID_CALIB_VOLTS_INV          "CALIB_VOLTS_INV"
 #define ID_CALIB_VOLTS_5V           "CALIB_VOLTS_5V"
+
+#define ID_CLEAR_ERROR				"CLEAR_ERROR"
 
 #define ID_STATUS					"STATUS"
 #define ID_FRIDGE_TEMP              "FRIDGE_TEMP"
@@ -211,7 +213,6 @@ public:
 	static int 		m_comp_temp_error;
 	static int 		m_extra_temp_error;
 
-
 	// methods
 
 	void setRPM(int rpm);
@@ -219,7 +220,9 @@ public:
 	static void stateTask(void *param);
 	static void onBacklightChanged(const myIOTValue *value, int val);
 	static void onSetPointChanged(const myIOTValue *value, float val);
-
+	static void clearInvError();
+		// clears the DIAG flashing LED when FRIDGE_MODE==OFF
+		// by toggling the PWM on for 1/2 second. See implementation.
 
 	// extensions
 	

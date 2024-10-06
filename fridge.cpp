@@ -285,8 +285,33 @@ void Fridge::setRPM(int rpm)
 	// and there are no errorw.
 
 	digitalWrite(LED_COMPRESS_ON,rpm);
-	ledcWrite(PWM_CHANNEL, pwm_duty);
+	#if WITH_PWM
+		ledcWrite(PWM_CHANNEL, pwm_duty);
+	#endif
 	cur_rpm = rpm;
+}
+
+
+
+void Fridge::clearInvError()
+	// I noticed during reverse engineering that I can clear the
+	// DIAG flashing LED by briefly turning the inverter on and
+	// off quick enough so that it resets its state, but does not
+	// have enough time to do an actual start attemp. This only
+	// works when the PWM is at 0 in the first place, i.e. when
+	// FRIDGE_MODE==OFF.
+{
+	if (_inv_error && _fridge_mode == FRIDGE_MODE_OFF && WITH_PWM)
+	{
+		ledcWrite(PWM_CHANNEL, DUTY_5MA);
+		delay(500);
+		ledcWrite(PWM_CHANNEL, 0);
+	}
+	else
+	{
+		LOGE("Attempt to clearInvError(%d) in FRIDE_MODE(%d) WITH_PWM(%d)",
+			 _inv_error,_fridge_mode,WITH_PWM);
+	}
 }
 
 
