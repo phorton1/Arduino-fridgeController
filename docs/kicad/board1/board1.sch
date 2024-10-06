@@ -74,36 +74,36 @@ $EndComp
 $Comp
 L Device:Q_NPN_CBE Q1
 U 1 1 66C61D51
-P 3050 3700
-F 0 "Q1" H 3240 3746 50  0001 L CNN
-F 1 "BC547" H 3250 3700 50  0000 L CNN
-F 2 "0_my_footprints2:transistor" H 3250 3800 50  0001 C CNN
-F 3 "~" H 3050 3700 50  0001 C CNN
-	1    3050 3700
+P 2150 5250
+F 0 "Q1" H 2340 5296 50  0001 L CNN
+F 1 "BC547" H 2350 5250 50  0000 L CNN
+F 2 "0_my_footprints2:transistor" H 2350 5350 50  0001 C CNN
+F 3 "~" H 2150 5250 50  0001 C CNN
+	1    2150 5250
 	-1   0    0    1   
 $EndComp
 $Comp
 L Device:R R11
 U 1 1 66C61D50
-P 3400 3700
-F 0 "R11" V 3300 3650 50  0001 L CNN
-F 1 "4.7K" V 3400 3700 50  0000 C CNN
-F 2 "0_my_footprints2:resistor" V 3330 3700 50  0001 C CNN
-F 3 "~" H 3400 3700 50  0001 C CNN
-	1    3400 3700
+P 2500 5250
+F 0 "R11" V 2400 5200 50  0001 L CNN
+F 1 "4.7K" V 2500 5250 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 2430 5250 50  0001 C CNN
+F 3 "~" H 2500 5250 50  0001 C CNN
+	1    2500 5250
 	0    1    1    0   
 $EndComp
-Text GLabel 2700 3500 0    50   Input ~ 0
+Text GLabel 1800 5050 0    50   Input ~ 0
 C
 $Comp
 L cnc3018_Library:BUCK01 M1
 U 1 1 61B26C43
-P 2950 1250
-F 0 "M1" H 3100 1250 50  0001 C CNN
-F 1 "BUCK01" H 2850 1250 50  0000 C CNN
-F 2 "0_my_footprints2:buck-mini360" H 2900 1550 50  0001 C CNN
-F 3 "" H 2900 1550 50  0001 C CNN
-	1    2950 1250
+P 2550 1500
+F 0 "M1" H 2700 1500 50  0001 C CNN
+F 1 "BUCK01" H 2450 1500 50  0000 C CNN
+F 2 "0_my_footprints2:buck-mini360" H 2500 1800 50  0001 C CNN
+F 3 "" H 2500 1800 50  0001 C CNN
+	1    2550 1500
 	1    0    0    1   
 $EndComp
 $Comp
@@ -131,23 +131,23 @@ $EndComp
 $Comp
 L power:+5V #PWR02
 U 1 1 61D92C26
-P 3750 1100
-F 0 "#PWR02" H 3750 950 50  0001 C CNN
-F 1 "+5V" V 3750 1300 50  0000 C CNN
-F 2 "" H 3750 1100 50  0001 C CNN
-F 3 "" H 3750 1100 50  0001 C CNN
-	1    3750 1100
+P 3950 1350
+F 0 "#PWR02" H 3950 1200 50  0001 C CNN
+F 1 "+5V" V 3950 1550 50  0000 C CNN
+F 2 "" H 3950 1350 50  0001 C CNN
+F 3 "" H 3950 1350 50  0001 C CNN
+	1    3950 1350
 	0    1    1    0   
 $EndComp
 $Comp
 L power:GND #PWR07
 U 1 1 61D9E980
-P 3300 1400
-F 0 "#PWR07" H 3300 1150 50  0001 C CNN
-F 1 "GND" H 3305 1227 50  0000 C CNN
-F 2 "" H 3300 1400 50  0001 C CNN
-F 3 "" H 3300 1400 50  0001 C CNN
-	1    3300 1400
+P 2900 1650
+F 0 "#PWR07" H 2900 1400 50  0001 C CNN
+F 1 "GND" H 2905 1477 50  0000 C CNN
+F 2 "" H 2900 1650 50  0001 C CNN
+F 3 "" H 2900 1650 50  0001 C CNN
+	1    2900 1650
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -164,12 +164,12 @@ $EndComp
 $Comp
 L power:GND #PWR06
 U 1 1 61DFC811
-P 2550 1400
-F 0 "#PWR06" H 2550 1150 50  0001 C CNN
-F 1 "GND" H 2555 1227 50  0000 C CNN
-F 2 "" H 2550 1400 50  0001 C CNN
-F 3 "" H 2550 1400 50  0001 C CNN
-	1    2550 1400
+P 2150 1650
+F 0 "#PWR06" H 2150 1400 50  0001 C CNN
+F 1 "GND" H 2155 1477 50  0000 C CNN
+F 2 "" H 2150 1650 50  0001 C CNN
+F 3 "" H 2150 1650 50  0001 C CNN
+	1    2150 1650
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -387,40 +387,40 @@ T
 $Comp
 L Connector_Generic:Conn_01x02 J1
 U 1 1 66CF29D6
-P 1350 1300
-F 0 "J1" H 1268 1517 50  0001 C CNN
-F 1 "12V_IN" H 1350 1000 50  0000 C CNN
-F 2 "0_my_footprints:myJSTx02" H 1350 1300 50  0001 C CNN
-F 3 "~" H 1350 1300 50  0001 C CNN
-	1    1350 1300
+P 950 1550
+F 0 "J1" H 868 1767 50  0001 C CNN
+F 1 "12V_IN" H 950 1250 50  0000 C CNN
+F 2 "0_my_footprints:myJSTx02" H 950 1550 50  0001 C CNN
+F 3 "~" H 950 1550 50  0001 C CNN
+	1    950  1550
 	-1   0    0    1   
 $EndComp
 $Comp
 L Switch:SW_SPDT SW1
 U 1 1 66CFD48E
-P 2150 1100
-F 0 "SW1" H 2150 1385 50  0001 C CNN
-F 1 "ON/OFF" H 2150 1293 50  0000 C CNN
-F 2 "0_my_footprints2:SW_DPDT_BLUE_LEVER" H 2150 1100 50  0001 C CNN
-F 3 "~" H 2150 1100 50  0001 C CNN
-	1    2150 1100
+P 1750 1350
+F 0 "SW1" H 1750 1635 50  0001 C CNN
+F 1 "ON/OFF" H 1750 1543 50  0000 C CNN
+F 2 "0_my_footprints2:SW_DPDT_BLUE_LEVER" H 1750 1350 50  0001 C CNN
+F 3 "~" H 1750 1350 50  0001 C CNN
+	1    1750 1350
 	-1   0    0    -1  
 $EndComp
 Wire Wire Line
-	1550 1200 1950 1200
+	1150 1450 1550 1450
 Wire Wire Line
-	1950 1300 2350 1300
+	1550 1550 1950 1550
 Wire Wire Line
-	2350 1100 2550 1100
+	1950 1350 2150 1350
 $Comp
 L Connector_Generic:Conn_01x02 J2
 U 1 1 66D2CE52
-P 3500 1300
-F 0 "J2" H 3418 1517 50  0001 C CNN
-F 1 "5V_JUMP" V 3650 1250 50  0000 C CNN
-F 2 "0_my_footprints2:pinHeader1x2" H 3500 1300 50  0001 C CNN
-F 3 "~" H 3500 1300 50  0001 C CNN
-	1    3500 1300
+P 3700 1550
+F 0 "J2" H 3618 1767 50  0001 C CNN
+F 1 "5V_JUMP" V 3850 1500 50  0000 C CNN
+F 2 "0_my_footprints2:pinHeader1x2" H 3700 1550 50  0001 C CNN
+F 3 "~" H 3700 1550 50  0001 C CNN
+	1    3700 1550
 	0    -1   1    0   
 $EndComp
 $Comp
@@ -491,11 +491,11 @@ MOSI
 Text GLabel 6050 3500 3    50   Input ~ 0
 SD_CS
 Wire Wire Line
-	3300 1100 3500 1100
+	2900 1350 3100 1350
 Wire Wire Line
 	5350 2300 5350 2400
 Wire Wire Line
-	3750 1100 3600 1100
+	3950 1350 3800 1350
 Text GLabel 2950 2100 0    50   Input ~ 0
 FAN_DIODE+
 Wire Wire Line
@@ -587,78 +587,78 @@ Wire Wire Line
 $Comp
 L Connector_Generic:Conn_01x02 J4
 U 1 1 66E5C146
-P 1700 4300
-F 0 "J4" H 1618 4517 50  0001 C CNN
-F 1 "MECH_THERM" H 1780 4246 50  0000 L CNN
-F 2 "0_my_footprints:myJSTx02" H 1700 4300 50  0001 C CNN
-F 3 "~" H 1700 4300 50  0001 C CNN
-	1    1700 4300
+P 1700 3500
+F 0 "J4" H 1618 3717 50  0001 C CNN
+F 1 "MECH_THERM" H 1780 3446 50  0000 L CNN
+F 2 "0_my_footprints:myJSTx02" H 1700 3500 50  0001 C CNN
+F 3 "~" H 1700 3500 50  0001 C CNN
+	1    1700 3500
 	-1   0    0    -1  
 $EndComp
 $Comp
 L power:+3.3V #PWR019
 U 1 1 66E5FDB9
-P 2050 4400
-F 0 "#PWR019" H 2050 4250 50  0001 C CNN
-F 1 "+3.3V" V 2050 4650 50  0000 C CNN
-F 2 "" H 2050 4400 50  0001 C CNN
-F 3 "" H 2050 4400 50  0001 C CNN
-	1    2050 4400
+P 2050 3600
+F 0 "#PWR019" H 2050 3450 50  0001 C CNN
+F 1 "+3.3V" V 2050 3850 50  0000 C CNN
+F 2 "" H 2050 3600 50  0001 C CNN
+F 3 "" H 2050 3600 50  0001 C CNN
+	1    2050 3600
 	0    1    -1   0   
 $EndComp
-Text GLabel 1900 4300 2    50   Input ~ 0
+Text GLabel 1900 3500 2    50   Input ~ 0
 MECH_THERM
 Wire Wire Line
-	1900 4400 2050 4400
+	1900 3600 2050 3600
 Text GLabel 5550 3500 3    50   Input ~ 0
 MECH_THERM
-Text Notes 2700 5400 2    50   ~ 0
+Text Notes 2700 4600 2    50   ~ 0
 DS18B20
 $Comp
 L Connector_Generic:Conn_01x03 J7
 U 1 1 66E723EC
-P 1700 4850
-F 0 "J7" H 1900 4800 50  0001 L CNN
-F 1 "TEMP1" H 1800 4850 50  0000 L CNN
-F 2 "0_my_footprints2:JST3" H 1700 4850 50  0001 C CNN
-F 3 "~" H 1700 4850 50  0001 C CNN
-	1    1700 4850
+P 1700 4050
+F 0 "J7" H 1900 4000 50  0001 L CNN
+F 1 "TEMP1" H 1800 4050 50  0000 L CNN
+F 2 "0_my_footprints2:JST3" H 1700 4050 50  0001 C CNN
+F 3 "~" H 1700 4050 50  0001 C CNN
+	1    1700 4050
 	-1   0    0    -1  
 $EndComp
 $Comp
 L Connector_Generic:Conn_01x03 J8
 U 1 1 66E750BA
-P 1700 5250
-F 0 "J8" H 1900 5200 50  0001 L CNN
-F 1 "TEMP2" H 1800 5250 50  0000 L CNN
-F 2 "0_my_footprints2:JST3" H 1700 5250 50  0001 C CNN
-F 3 "~" H 1700 5250 50  0001 C CNN
-	1    1700 5250
+P 1700 4450
+F 0 "J8" H 1900 4400 50  0001 L CNN
+F 1 "TEMP2" H 1800 4450 50  0000 L CNN
+F 2 "0_my_footprints2:JST3" H 1700 4450 50  0001 C CNN
+F 3 "~" H 1700 4450 50  0001 C CNN
+	1    1700 4450
 	-1   0    0    -1  
 $EndComp
 $Comp
 L power:+3.3V #PWR026
 U 1 1 66EA164B
-P 2450 4750
-F 0 "#PWR026" H 2450 4600 50  0001 C CNN
-F 1 "+3.3V" V 2450 5000 50  0000 C CNN
-F 2 "" H 2450 4750 50  0001 C CNN
-F 3 "" H 2450 4750 50  0001 C CNN
-	1    2450 4750
+P 2450 3950
+F 0 "#PWR026" H 2450 3800 50  0001 C CNN
+F 1 "+3.3V" V 2450 4200 50  0000 C CNN
+F 2 "" H 2450 3950 50  0001 C CNN
+F 3 "" H 2450 3950 50  0001 C CNN
+	1    2450 3950
 	0    1    -1   0   
 $EndComp
 $Comp
 L power:GND #PWR025
 U 1 1 66EA4989
-P 2450 4850
-F 0 "#PWR025" H 2450 4600 50  0001 C CNN
-F 1 "GND" V 2450 4650 50  0000 C CNN
-F 2 "" H 2450 4850 50  0001 C CNN
-F 3 "" H 2450 4850 50  0001 C CNN
-	1    2450 4850
+P 2450 4050
+F 0 "#PWR025" H 2450 3800 50  0001 C CNN
+F 1 "GND" V 2450 3850 50  0000 C CNN
+F 2 "" H 2450 4050 50  0001 C CNN
+F 3 "" H 2450 4050 50  0001 C CNN
+	1    2450 4050
 	0    -1   -1   0   
 $EndComp
-Text GLabel 2450 4950 2    50   Input ~ 0
+Text GLabel 2450 4150 2    50   Input ~ 0
 ONE_WIRE
 Text GLabel 5750 3500 3    50   Input ~ 0
 ONE_WIRE
@@ -762,11 +762,11 @@ Text GLabel 5950 2500 1    50   Input ~ 0
 LED_RED
 Text GLabel 6050 2500 1    50   Input ~ 0
 LED_BLUE
-Text GLabel 3650 3700 2    50   Input ~ 0
+Text GLabel 2750 5250 2    50   Input ~ 0
 PWM
 Wire Wire Line
-	2700 3500 2950 3500
-Text GLabel 2750 3900 0    50   Input ~ 0
+	1800 5050 2050 5050
+Text GLabel 1850 5450 0    50   Input ~ 0
 T
 Wire Wire Line
 	3250 2200 3900 2200
@@ -775,24 +775,24 @@ Wire Wire Line
 Wire Wire Line
 	3250 2800 3900 2800
 Wire Wire Line
-	3550 3700 3650 3700
+	2650 5250 2750 5250
 Wire Wire Line
-	2750 3900 2950 3900
-Text Notes 1700 1200 0    50   ~ 0
+	1850 5450 2050 5450
+Text Notes 1300 1450 0    50   ~ 0
 12V
 $Comp
 L power:GND #PWR05
 U 1 1 670512B6
-P 1550 1400
-F 0 "#PWR05" H 1550 1150 50  0001 C CNN
-F 1 "GND" H 1555 1227 50  0000 C CNN
-F 2 "" H 1550 1400 50  0001 C CNN
-F 3 "" H 1550 1400 50  0001 C CNN
-	1    1550 1400
+P 1150 1650
+F 0 "#PWR05" H 1150 1400 50  0001 C CNN
+F 1 "GND" H 1155 1477 50  0000 C CNN
+F 2 "" H 1150 1650 50  0001 C CNN
+F 3 "" H 1150 1650 50  0001 C CNN
+	1    1150 1650
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	1550 1300 1550 1400
+	1150 1550 1150 1650
 Wire Wire Line
 	5050 2400 5350 2400
 Connection ~ 5350 2400
@@ -810,7 +810,7 @@ F 3 "~" H 1350 2550 50  0001 C CNN
 	-1   0    0    -1  
 $EndComp
 Text Notes 1250 2900 2    63   ~ 0
-black\norange\nyellow\ngreen\nblue\nwhite
+brown\norange\nyellow\ngreen\nblue\nwhite
 Wire Wire Line
 	5650 1550 5800 1550
 Wire Wire Line
@@ -868,47 +868,47 @@ S_5V
 $Comp
 L Device:R R13
 U 1 1 66E20978
-P 2150 5150
-F 0 "R13" V 2050 5100 50  0001 L CNN
-F 1 "4.7K" V 2150 5150 50  0000 C CNN
-F 2 "0_my_footprints2:resistor" V 2080 5150 50  0001 C CNN
-F 3 "~" H 2150 5150 50  0001 C CNN
-	1    2150 5150
+P 2150 4350
+F 0 "R13" V 2050 4300 50  0001 L CNN
+F 1 "4.7K" V 2150 4350 50  0000 C CNN
+F 2 "0_my_footprints2:resistor" V 2080 4350 50  0001 C CNN
+F 3 "~" H 2150 4350 50  0001 C CNN
+	1    2150 4350
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	1900 4950 2300 4950
+	1900 4150 2300 4150
 Wire Wire Line
-	1900 4750 1950 4750
+	1900 3950 1950 3950
 Wire Wire Line
-	1900 5250 2400 5250
+	1900 4450 2400 4450
 Wire Wire Line
-	2400 5250 2400 4850
+	2400 4450 2400 4050
 Wire Wire Line
-	1900 5350 2300 5350
+	1900 4550 2300 4550
 Wire Wire Line
-	2300 5350 2300 5150
-Connection ~ 2300 4950
-Connection ~ 2300 5150
+	2300 4550 2300 4350
+Connection ~ 2300 4150
+Connection ~ 2300 4350
 Wire Wire Line
-	2300 5150 2300 4950
+	2300 4350 2300 4150
 Wire Wire Line
-	1900 5150 1950 5150
+	1900 4350 1950 4350
 Wire Wire Line
-	1950 5150 1950 4750
-Connection ~ 1950 5150
+	1950 4350 1950 3950
+Connection ~ 1950 4350
 Wire Wire Line
-	1950 5150 2000 5150
-Connection ~ 1950 4750
+	1950 4350 2000 4350
+Connection ~ 1950 3950
 Wire Wire Line
-	1950 4750 2450 4750
+	1950 3950 2450 3950
 Wire Wire Line
-	1900 4850 2400 4850
-Connection ~ 2400 4850
+	1900 4050 2400 4050
+Connection ~ 2400 4050
 Wire Wire Line
-	2400 4850 2450 4850
+	2400 4050 2450 4050
 Wire Wire Line
-	2300 4950 2450 4950
+	2300 4150 2450 4150
 Text GLabel 3900 3100 2    50   Input ~ 0
 S_5V
 Connection ~ 3250 3000
@@ -965,17 +965,17 @@ $EndComp
 $Comp
 L Connector_Generic:Conn_01x02 J9
 U 1 1 66E63795
-P 1850 1500
-F 0 "J9" H 1768 1717 50  0001 C CNN
-F 1 "12V_TEST" V 2000 1450 50  0000 C CNN
-F 2 "0_my_footprints2:pinHeader1x2" H 1850 1500 50  0001 C CNN
-F 3 "~" H 1850 1500 50  0001 C CNN
-	1    1850 1500
+P 1450 1750
+F 0 "J9" H 1368 1967 50  0001 C CNN
+F 1 "12V_TEST" V 1600 1700 50  0000 C CNN
+F 2 "0_my_footprints2:pinHeader1x2" H 1450 1750 50  0001 C CNN
+F 3 "~" H 1450 1750 50  0001 C CNN
+	1    1450 1750
 	0    -1   1    0   
 $EndComp
 Wire Wire Line
-	1850 1300 1550 1300
-Connection ~ 1550 1300
+	1450 1550 1150 1550
+Connection ~ 1150 1550
 $Comp
 L power:+5V #PWR021
 U 1 1 61DD0190
@@ -998,4 +998,25 @@ F 3 "" H 4200 4600 50  0001 C CNN
 	1    4200 4600
 	-1   0    0    1   
 $EndComp
+Text Notes 850  1600 2    63   ~ 0
+red\nblack
+Text Notes 650  1100 0    50   ~ 0
+Note the use of a 1N4003 diode to prevent backflow from the system 5V to the\nbuck converter.  Without this, if running only from USB power,and the inverter \npower is turned off,  the 5V will attempt to reverse power the buck converter,\nand if the on/off switch is on, with no 12V flowing in, the buck converter will\ntry to power the inverter itself!!!  Because of this, the actual output of the \nbuck converter will be more like 6V to account for the drop across the diode.\nCalibrate the buck converter, as expected, at the input pin of the jumper.\n
+Text Notes 4300 750  0    50   ~ 0
+The contrast on the LCD should be adjusted to the BUCK (real) 5.16V - not the USB 5V\nwhich drops to about 4.6V.
+Text Notes 800  5950 0    50   ~ 0
+I am concerned about shorting the C&T pins with the miniBox switch when\nthe PWM is running, but it looks like it will be ok, as that should mean that\nNO CURRENT flows between the C&T pins and the PWM will do nothing.
+$Comp
+L Device:D D5
+U 1 1 67022BE0
+P 3250 1350
+F 0 "D5" H 3250 1133 50  0001 C CNN
+F 1 "1N4003" H 3250 1225 50  0000 C CNN
+F 2 "0_my_footprints:myZenerDiode" H 3250 1350 50  0001 C CNN
+F 3 "~" H 3250 1350 50  0001 C CNN
+	1    3250 1350
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	3400 1350 3700 1350
 $EndSCHEMATC
