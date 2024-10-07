@@ -50,8 +50,8 @@
 	// The tick_intervals are 0 based and will be will be lined up
 
 	logColumn_t  fridge_cols[] = {
-		{"temp1",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-		{"temp2",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+		{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+		{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
 		{"mech",	LOG_COL_TYPE_UINT32,		1,		},
 		{"rpm",		LOG_COL_TYPE_UINT32,		500,	},
 	};
