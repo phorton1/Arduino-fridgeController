@@ -1,21 +1,25 @@
-# fridgeController - for Danfoss BD50 w/inverter unit
+# fridgeController - for Danfoss BD35/BD50 w/12V Inverter
 
 **Home** --
 **[Design](design.md)** --
 **[Electronics](electronics.md)** --
 **[Build](build.md)** --
-**[Notes](notes.md)**
+**[Notes](notes.md)** --
+**[Analysis](analysis.md)**
+
 
 The original **Waeco Adler Barbour Cold Machine Board F-1886 Rev2** used on
-my boat's refridgeration system burned out.  It has failed several
+my boat's refrigeration system burned out.  It has failed several
 times, and from the beginning, and over the 17 years I have had the boat,
 I have jury rigged solutions for controlling the temperature of the freezer,
 having indicator lights that I can see, and so forth.
 
 The compressor is a **Danfoss BD50** and uses the typical **12V Inverter Module**
 to actually run the compressor.  For many years I fought with water cooling the
-refridgerator, but after changing many hoses and pumps, over and over, I decided
+refrigerator, but after changing many hoses and pumps, over and over, I decided
 to just let it be air cooled.
+
+![home_danfossBD50_and_101N212.jpg](images/home_danfossBD50_and_101N212.jpg)
 
 In any case I have decided to trash the original controller board and wiring harness,
 and build my own **ESP32** based **Thermostat and Controller** using my
@@ -28,7 +32,7 @@ could easily be added.
 Unfortunately there are no schematics of the Danfoss Inverter and so I have had
 to reverse engineer it's behavior empirically.   I have two different units.
 There is an **101N0212** currently on the pump.  I also have a spare **101N0220**
-I used for reverse engineering on my desk (wihtout a compressor).
+I used for reverse engineering on my desk (without a compressor).
 
 
 ## A. Documentation Organization
@@ -39,8 +43,10 @@ The documentation of the fridgeController is broken up into several pages:
 - **[Design](design.md)** - detailed design, including parameters & behavior
 - **[Electronics](electronics.md)** - circuit schematics and PCB's
 - **[Build](build.md)** - 3D printing, assembly, and installation
-- **[Notes](notes.md)** - Notes on the fridgeController, including a fairly
-	**detailed analsysis** of the *101N0212/101N0220 Danfoss*
+- **[Notes](notes.md)** - Implementation Notes for the fridgeController
+- **[Analysis](analysis.md)** - A *detailed analysis* of the **101N0212/101N0220 Danfoss/Secop**
+  Inverter behavior.
+  
 
 ## B. Design Overview
 
@@ -63,14 +69,16 @@ high speed in the event the ESP32 based controller fails,
 or is not present (i.e. in development or being repaired).
 It has the following connectors:
 
-- has a **2 pin Pheonix plug** for 12V input from the
+- has a **2 pin Phoenix plug** for 12V input from the
   inverter's main BATT+ and BATT- terminals
-- has a **2 pin Pheonix plug** for FAN+ and FAN- output
+- has a **2 pin Phoenix plug** for FAN+ and FAN- output
   to the 12V 0.6A FAN
 - has a **6 pin JST connector** for input from the other 6 terminals
   (FAN/DIODE+, FAN-, DIODE-, C, P, and T) from the inverter
 - has an **8 pin JST connector** for output to the ESP32 based
   controller
+
+![home_miniBox_diagram.jpg](images/home_miniBox_diagram.jpg)
 
 The miniBox has three indicator LEDs
 
@@ -79,18 +87,18 @@ The miniBox has three indicator LEDs
 - **RED** for the flashing diagnostic diode.
 
 The miniBox has two switches that allow the compressor to
-be run in an emergency, in the absense of a controller, or
+be run in an emergency, in the absence of a controller, or
 generally, to override the controller.
 
-- OVERRIDE - Turns the pump on, overriding the (possibly missing)
+- **OVERRIDE** - Turns the pump on, overriding the (possibly missing)
   controller.
-- LOW/HIGH SPEED - Controlls the speed of the compressor if
+- **LOW/HIGH SPEED** - Controls the speed of the compressor if
   OVERRIDE is turned on.
 
 As mentioned before, the compressor can be run and used
 with just the miniBox.  In the even that it fails for some
 reason, it may quickly be removed, and as long as the main
-12V power supply to the inverter, the comppressor can be
+12V power supply to the inverter, the compressor can be
 run at low speed by merely shorting the T&C pins on the
 inverter.
 
@@ -109,9 +117,11 @@ The Controller has the following connectors:
 - a single **2 pin JST connector** for connection to an optional
   **mechanical thermostat**
 - a **3 pin JST connector** for output to an external **WS2812B
-  LED** that can be mounted outside of the cabinet for a general
-  visual indication of the state of the refridgerator without
-  needing to open the cabinet and look at the Controller.
+  LED*s* that can be mounted on the controller, and/or outside
+  of the cabinet for a general visual indication of the state
+  of the freezer.
+
+![home_controller_diagram.jpg](images/home_controller_diagram.jpg)
 
 Initially the Controller will be powered by breaking the BATT+ and
 BATT- wires of the 8 pin cable from the miniBox into a separate 2 pin
@@ -119,13 +129,13 @@ JST connector.  Later, if so desired, the Controller can be powered
 by a separate connection to the boat's batteries so that the Inverter
 power supply can be turned off and on as needed without necessarily
 rebooting the ESP32, thus allowing the Controller to detect and alert
-refridgerator power problems,
+me to refrigerator power problems,
 
 The Controller generally has a number of physical features:
 
 - **on/off switch**
 - 16x2 character **Blue LCD** display
-- an **SD Card** for storing refridgerator **history** and **logfiles**
+- an **SD Card** for storing refrigerator **history** and **logfiles**
 - three **buttons** for direct programming of the Controller
 - four **indicator LEDs** (green, yellow, red, and blue)
 
@@ -175,6 +185,7 @@ but not limited to:
 - [Arduino IDE and Libraries](https://www.arduino.cc/)
 - [Espressif Systems](https://www.espressif.com/en/products/socs/esp32)
 - [Adafruit NeoPixel Library](https://github.com/adafruit/Adafruit_NeoPixel)
+- **jQuery**, **Bootstrap**, and the [jqPlot](**http://www.jqplot.com/) javascript libraries
 
 
 ## License

@@ -4,7 +4,8 @@
 **[Design](design.md)** --
 **[Electronics](electronics.md)** --
 **Build** --
-**[Notes](notes.md)**
+**[Notes](notes.md)**--
+**[Analysis](analysis.md)**
 
 
 [**Next:**](notes.md) Some various Notes about the fridgeController ...

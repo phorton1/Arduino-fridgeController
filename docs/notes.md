@@ -1,277 +1,135 @@
-# fridgeController Notes
+# fridgeController Implementation Notes
 
 **[Home](readme.md)** --
 **[Design](design.md)** --
 **[Electronics](electronics.md)** --
 **[Build](build.md)** --
-**Notes**
+**Notes** --
+**[Analysis](analysis.md)** 
+
+
+### A. New VALUE_STYLE_TEMPERATURE and DEGREE_TYPE style and value
+
+The base myIOTDevice now has a **DEGREES_TYPE** Value that can
+be set by the user, and which may be *Centigrade* or *Farenheit*.
+Degrees are tagged with the new **VALUE_STYLE_TEMPERATURE** style
+and stored as VALUE_TYPE_FLOAT (32 bit floating point number) representing
+a temperature in 1/128ths of a degree centigrade.
+
+The Controller, WebUI and myIOTDevice UI will automatically display
+and manipulate temperatures in the current DEGGREE_TYPE as specified
+by the user.
+
+Note that DS18B20 temperature sensors essentially return a
+signed 16 bit integer representing the temperature reading
+in 1/128th degrees Centigrade, hence this myIOTDevice addition.
+
+See fridgeController::tSense.cpp for a notion of how
+complicated and programmable these sensors are, and
+how I am using the boot-up defaults on the sensors I
+have.
+
+This notion is also extended into the myIOTDataLog object,
+which now has an explicit type, **LOG_COL_TYPE_TEMPERATURE**,
+for interpretation of logged data values by the webUI
+javascript.
+
+
+## B. Charting and Plotting
+
+
+### C. the fakeCompressor
+
+In order to test the software, particularly the *Control Algorithms*,
+*Data Logging*, and *WebUI **Charting and Plotting***, on a *bare ESP32*
+without any PCB's, I spent quite a bit of time implementing the **fakeCompressor**,
+which is included (by default) if the compile define *WITH_FAKE=1*
+is set when compiling the firmware.
+
+The fakeCompressor feature can entirely be turned ON and OFF with
+the *USE_FAKE* Value, and within the feature the emulated Compressor (12V power supply)
+can be turned OFF and ON with the *FAKE_COMP_ON* Value.
+When the feature is turned ON, **the code stops using the "real" Voltage (vSense.cpp) and
+Temperature (tSense.cpp) sensors**, and instead, the fakeCompressor
+outputs "fake" *FRIDGE_TEMP*, *COMP_TEMP*, and *MECH_TERM* Values
+for use by the rest of the system.
+
+As with the real compressor, if the power supply is turned OFF,
+or the power supply is OFF and the *COMP_RPM* is zero (the compressor
+is not running),  the freezer and compressor will move towards the
+**FAKE_AMBIENT**temperature and level off at that temperature.
+
+If the power supply is turned on, then the fakeCompressor is sensitive
+to the *COMP_RPM* being set by the Controller, and when the COMP_RPM is
+non-zero, the fakeCompressor will emulate the cooling of
+the freezer, and heating of the compressor.
+
+There are a number of **Values** that control the fakeCompressor
+that are presented on the *Config* tab of the WebUI if the feature
+is compiled in.
+
+- **USE_FAKE** - *bool 0/1* - Whether to use the fakeCompressor or not.
+- **RESET_FAKE** - *command* - A comman to reset the fake Compressor to some initial values
+  (FRIDGE_TEMP=-16C, COMP_TEMP=FAKE_AMBIENT)
+- **FAKE_COMP_ON** - *bool 0/1* - Emulates turning the 12V power supply Off or On.
+- **FAKE_AMBIENT** - *float, temperature, default(26.67C) - the ambient temperature used for th emodel.
+- **FAKE_PERIOD** - *integer, default(30)* - approximate number of seconds for a FRIDGE_MODE=TEMP or
+  MECH cooling cycle
+
+I have messed a lot with this stupid thing.  I have had luck with FAKE_PERIOD=10,
+to show a 10 second cycle, and FAKE_PERIOD=30 to show a 30 second cycle. However,
+modelling a real compresser/freezer combination is exceeingly complicated, and
+so the model is not guaranteed to work over all ranges.
+
+The remainder of the Values associated with the Fake Compressor, are listed here,
+without descriptions or default values.  Please see fakeCompressor.cpp if
+you really want to mess with this.
+
+- **COOLING_ACCEL** - *float, -10000-10000*
+- **WARMING_ACCEL** - *float, -10000-10000*
+- **HEATING_ACCEL** - *float, -10000-10000*
+- **COOLDOWN_ACCEL** - *float, -10000-10000*
+- **MAX_COOL_VEL** - *float, -10000-10000*
+- **MAX_WARM_VEL** - *float, -10000-10000*
+- **MAX_HEAT_VEL** - *float, -10000-10000*
+- **MAX_DOWN_VEL** - *float, -10000-10000*
+- **FAKE_PROB_ERROR** - *integer 0..100, not implemented* -
+  the odds of the fakeCompressor failing to start,
+  or encountering a compressor error while running
+
+The fakeCompressor emulates a warming-cooling cycle which takes
+approximately **FAKE_PERIOD**, in seconds, to complete.  The
+default is 30 seconds, or in other words, over about 30 seconds,
+with the default SETPOINTS, the fakeCompressor FRIDGE_TEMP will warm
+to the SETPOINT_HIGH, temperature, the MECH_THERM will be turned on,
+and, depending on the FRIDGE_MODE and SETPOINTS, the Controller will
+set the COMP_RPM to a non-zero value, turning the compressor on and
+the fakeCompressor will cool the refrigerator, and heat the compressor
+until the RPMs goes back to zero, ending the cycle.
 
+Here is a chart with the default settings of TEMP_SENSE_SECS=30 and
+FAKE_PERIOD=30 where you can clearly see the fridge temperature
+(Blue line) rising until the SETPOINT_HIGH is reached, at which point
+the fakeCompressor turns on the MECH_TERM (Gold line), and the Controller
+turns on the COMP_RPM (Green line), at which point the COMP_TEMP (Orange
+line) starts rising, and the FRIDGE_TEMP starts falling.
 
-Unfortunately there are no schematics of the Danfoss Inverter and so I have had
-to reverse engineer it's behavior empirically.   I have two different units.
-There is an **101N0212** currently on the pump.  I also have a spare **101N0220**
-I used for reverse engineering on my desk (wihtout a compressor).
+![notes_fakeCompressorCycle.jpg](images/notes_fakeCompressorCycle.jpg)
 
+When the FRIDGE_TEMP hits SETPOINT_LOW, the Controller turns off the
+COMP_RPM (the compressor gets turned off), and the temperature of the
+fridge begins (slowly) rising, and the temperature of the compressor starts
+(more quickly) falling, towards FAKE_AMBIENT.
+This helps prove that the basic **FRIDGE_MODE**, **DataLogging** and **Charting**
+software is working.
 
-## A. Inverter Analysis
+The fakeCompressor also outputs random values for the 5V and 12V power supplies so that **Plotting**
+can basically be tested.  Here is an example plot where you can see the fake 12V
+power supply slightly changing:
 
-The Inverter has the following blade connectors, from top to bottom:
+![notes_fakeCompressorPlot.jpg](images/notes_fakeCompressorPlot.jpg)
 
-- **BATT-** - GND. connected directly to the 12V battery negative (in my case, a negative shunt)
-- **BATT+** - connected to the 12V battery positive thru a fuse (in my case a 15A breaker)
-- **FAN/DIODE+** - goes, basically, to BATT+, when there is power to the inverter
-- **FAN-** - pulled towards ground (to BATT+ minus 12V) via a regulator, to turn the fan on.
-  Current limited to 0.7A with 1A surges allowed for a few seconds.
-- **DIODE-** - pulled to ground to flash a led.  Current limited to 10ma.
-- **C** - common thermostat terminal. At ground potential.
-- **P** - optionl battery cutoff resistor to C. At 5V potential. With no resistor the default
-   battery cutoff is 9.6V.  With a 33K resistor it is something like 11V.
-- **T** - thermostat terminal. has 5V potential. Short to C gives 2000 rpm, 1.5K resistor to C gives
-  max 3500 rpm
 
 
-### A1. Cutoff Voltage
 
-The documentation "standard battery protection settings" says that the
-default cutoff is 10.4V, restored at 11.7V, and can be adjusted with a
-resistor between C and P as shown in tables.
-
-On my 101N0220, the inverter, with no connection, appears to cut out at
-10.3V and come back on at 12V, which is close to the documentation.
-
-I tried shorting C and P, and a few resistor values, and the table appears
-to be roughly accurate.
-
-The Waeco controller board I am replacing had a 1.5K resistor between C and P,
-but I am leaving it out, in favor of the defaults, in my new implementation.
-There is a blank place to solder a resistor into the MiniBox for an fixed
-alternative voltage cutoff.
-
-
-### A2. FAN/DIODE+
-
-I measure less than 1/2 ohm between this and BATT+.  That is likely within
-the limits of my meter, connections, wires, and probes.  So, basicially,
-I believe BATT+ and FAN/DIODE+ are connected inside the inverter.
-
-Varying BATT++ from 10 to 14V on my power supply causes FAN/DIODE+ to track
-the change exactly as far as I can tell.
-
-I will use FAN/DIODE+ as a proxy for the BATT+ voltage to the inverter
-for displaying the battery voltage.
-
-
-### A3. FAN-
-
-The documentation says that a fan connected between FAN/DIODE+ and FAN- will
-get 12V of regulated power, 0.7A continuous with 1A surges allowed, and that
-the inverter will fault and give a 2 flash error code if the fan draws more
-than 1A.
-
-So, it appears FAN- is pulled low, through a 12V regulator, with current sensing,
-probably a low ohm shunt, and turned on and off via a mosfet or internal relay.
-Note that the FAN will not turn on at all if the BATT++ (==FAN/DIODE+) voltage
-is too low and the unit gives a 1 flash error code.
-
-Otherwise, as measured on an oscilloscope, the FAN never receives more than
-12V when FAN- is pulled down, and there is a small voltage offset required
-for the 12V regulator.   Therefore, for example, if the battery is
-14V, FAN-, when on, will be -12V relative to FAN/DIODE+ and approximately +2V
-relative to BATT- (ground).
-
-As BATT+ (and hence FAN/DIODE+) falls below 12V, but remains above the battery
-cutoff, the fan receives less than 12V.   At 11V of BATT+, for example, it
-gets about -10.5V relative to FAN/DIODE+, and it is still about 0.5V above
-ground.
-
-
-### A4. DIODE-
-
-Likewise, DIODE- is pulled to ground, relative to DIODE/FAN+, in order to
-flash the red diagnostic LED.   The documentation mentions that this is
-automagically current limited to 10ma.
-
-I measured this with an oscilloscope, and it indeed drops to ground potential.
-I believe there is a 1K or so internal resistor in the inverter on the DIODE- pin.
-
-This is becausse I have had success hooking a regular 5V LED directly between
-DIODE/FAN+ and FAN-, and I have never burnt one out.  There was no resistor used
-on the Waeco controller board I am replacing, and that diode lights up fine
-with 5V through a 220 ohm resistor, which futher confirms my supposition.
-
-FWIW there is no such thing as a "12V diode", even though you will see it
-mentioned on variouse websites.  What these folks apparently mean is a
-regular LED with a series resistor (around 1K) soldered to one leg and
-covered with heatshrink tubing.  I don't think the extra resistor is needed,
-and would only serve to make the LED dimmer.
-
-
-### A5. C-T connection (pump on & speed)
-
-Shorting the **C** and **T** pins will cause the pump to (start as needed and)
-run at the lowest 2000 RPM.  Placing a resistor across these terminal
-will cause it to run at higher RPMS.  According to the docs, a 1.5K resistor
-will cause it to run at 3500 rpm.
-
-It is actually based on the current.  It is difficult to actually measure
-the pump RPMs (especally with no pump hooked up!) to test this.
-
-Note, FWIW, that the T pin actually appears to be driven to +5V relative to
-BATT- (ground), probably by a 5V regulator and that the P pin appears to
-be at the same potential, probably through a 10K resistor, guessing
-from the battery protection resistor values.
-
-
-### A6. PWM to control C-T current
-
-Although the simplest physical way to control the compressor speed is
-the use of a fixed resistor between the C and T pins, with a dead-short
-equaling 2000 rpms (min), and a 1.5K resistor equaling about 3500 rpms (max),
-the doc mentions that the compressor speed can be controlled by PWM,
-and it is actually the current flowing between the T and C pins that
-is important.
-
-This is great news, because it means that you can vary the compressor
-speed (and turn it on and off) with a simple NPN transitor with the
-collector connected to T, the emitter to C, and a PWM signal coming
-from the MPU to the base (thru a 4.7K resistor).
-
-Which means that a bulky and difficult to use relays and fixed resistors,
-and/or digital potentiometers are not needed to control the compressor
-speed.  The implementation of the PWM signal is documented in the
-C++ source code.
-
-
-### A7. Starting, Running, and Errors
-
-The behavior of the inverter is complicated and difficult to explain.
-
-**(a) INITIAL STATE  (no C-T connection)**
-
-Assume that the inverter is powered up with no connection (thermostat)
-between the C and T pins.
-
-In this state it will NOT detect an undervoltage.  It brings FAN/DIODE+
-upto BATT+, whatever that is.  It brings the T and P pins upto 5V through
-a 5V regulator (so they would be below 5V if the BATT+ was less than, say,
-6V or so).
-
-The LED is not flashing (DIODE- is not pulled down) and the FAN is not
-running (FAN- is not pulled down).
-
-It is only when the C&T pins are connected (a current flows from T to C),
-that a "startup attempt" will be made, and it is only after a startup
-attempt that an undervoltage will be detected (and/or cause 1 flash
-of the diode).
-
-**(b) STARTUP ATTEMPT (C-T connected)**
-
-The fan is turned off if it is on. The error_state is reset to zero and the
-diode stops flashing. There is a delay of a few seconds before anything else happens.
-
-Then, if BATT+ is lower than the cutoff voltage, the diode will
-start flashing once every four seconds and nothing else will happen. We call this
-error_state(1).
-
-Otherwise, with sufficient voltage, it then briefly pulls the FAN- low to check
-for a FAN overcurrent condition. If there is a fan overcurrent, it will go into
-error_state(2), flashing twice every four seconds, and nothing else will happen.
-
-Otherwise, the inverter makes three rapid attempts to start the pump.  If it
-fails to start the pump, it starts the fan and goes into error_state(3),
-flashing 3 times every four seconds
-
-**(c) TIMED RESTART**
-
-In an error_state, after 60-90 seconds, the pump will make another startup attempt.
-
-**(d) Undervoltage and Fan Overcurrent**
-
-These checks happen continiously in real time, during a startup attempt, as well
-as while the pump is running normally. As soon as an undervoltage or fan overcurrent
-is detected, the pump and fan will be turned off immediately.  However, if already
-in an error_state (i.e. pending a restart attempt), the error_state (number of flashes)
-will not change until the **next** startup attempt.
-
-In other words, If an undervoltage or fan overcurrent occurs while there is an error_state,
-the LED keeps flashing the old error_state, and will not start flashing the 1 or 2 flashes
-for undervoltage or fan overcurrent until the next restart attempt (60-90 seconds).
-
-
-**(d) Voltage Restored**
-
-If an undervoltage is restored while in an error_state, the fan will be started
-immediately. A restart attempt will take place at the next 60-90 second interval.
-
-
-**(e) ERROR_STATE**
-
-To summarize, an ERROR_STATE is when the LED is flashing. Once an error state is
-established it remains in place until the next 60-90 second restart attempt.
-
-
-
-**(f) Toggling C&T**
-
-The above descriptions assume that once C&T are connected, they stay connected.
-
-However, I noted the following during testing.
-
-C&T are normally connected and disconnected by a thermostat (the controller).
-So, normally, the LED is not flashing and the pump (and fan) starts and stops
-based on the CT connection.
-
-If C&T are disconnected while in an error_state, the FAN will stop, but the
-LED will keep flashing the error_state.
-
-However, EVEN IN AN ERROR STATE, if C&T are disconnected then re-connected,
-the inverter will immediately do a new start attempt (which has a built in
-few seconds of delay).  Note that this subverts the 60-90 second automatic
-restart attempt.
-
-Thus, one way to clear an error state, and return the inverter, more or less to
-its INITIAL STATE is to toggle the C&T connection.  If the re-connection is
-brief, after the fan turns off, but before the delay until the actual
-restart attempt happens, essentially this clears the error_state and
-(more or less) returns the inverter to its initial state.
-
-
-
-
-### Pump running indicator (BLUE LED on controller box)
-
-Prevously, on my boat, I had hooked up a blue "12V LED" between the the FAN/DIODE+
-and FAN- pins, and, with the 101N0212, that LED acted like a "pump running" indicator.
-
-The previous Waeco board ran the FAN/DIODE+ and FAN- signals to a relay that ran
-both the FAN, and a potential external cooling water pump (or in my distant past to
-another relay far away on the boat that subsequently actually turned on the
-water pump).
-
-However, with the 101N0200 on my desk, the fan is turned on not only when the pump
-runs, but also in any error states (pending a restart effort 60-90 seconds later).
-
-Therefore, apparently, I cannot solely use the "fan running" as an indicztor that
-the pump is running.  Instead I am forced to use a combination of "there
-are no errors" and "the fan is running" to show a succesful pump running state
-
-Once again, more testing once I create a device and actually hook it up to the
-101N0212 will perhaps provide more information.
-
-
-
-### Unresolved Issues
-
-(1) I am waiting for some 6 pin right angle 2.54mm JST connectors.
-
-(2) I am waiting for some DS18B20 temperature probes.
-    I have not yet decided how many of these should really be
-	on the controller.  At least one, maybe upto 4.
-	Additionally, I don't know if I will forgoe the current mechanical
-	thermostat or possibly use it in parallel, or as a software
-	option.
-
-
-
-
-[**Done!!**](readme.md) Back to the beginning ...
+[**Next**](analysis.md) A detailed Analysis of the Inverter ...
