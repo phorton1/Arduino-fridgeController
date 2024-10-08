@@ -17,7 +17,7 @@ and stored as VALUE_TYPE_FLOAT (32 bit floating point number) representing
 a temperature in 1/128ths of a degree centigrade.
 
 The Controller, WebUI and myIOTDevice UI will automatically display
-and manipulate temperatures in the current DEGGREE_TYPE as specified
+and manipulate temperatures in the current DEGREE_TYPE as specified
 by the user.
 
 Note that DS18B20 temperature sensors essentially return a
@@ -57,7 +57,7 @@ for use by the rest of the system.
 As with the real compressor, if the power supply is turned OFF,
 or the power supply is OFF and the *COMP_RPM* is zero (the compressor
 is not running),  the freezer and compressor will move towards the
-**FAKE_AMBIENT**temperature and level off at that temperature.
+**FAKE_AMBIENT** temperature and level off at that temperature.
 
 If the power supply is turned on, then the fakeCompressor is sensitive
 to the *COMP_RPM* being set by the Controller, and when the COMP_RPM is
@@ -72,7 +72,7 @@ is compiled in.
 - **RESET_FAKE** - *command* - A comman to reset the fake Compressor to some initial values
   (FRIDGE_TEMP=-16C, COMP_TEMP=FAKE_AMBIENT)
 - **FAKE_COMP_ON** - *bool 0/1* - Emulates turning the 12V power supply Off or On.
-- **FAKE_AMBIENT** - *float, temperature, default(26.67C) - the ambient temperature used for th emodel.
+- **FAKE_AMBIENT** - *float, temperature, default(26.67C)* - the ambient temperature used for th emodel.
 - **FAKE_PERIOD** - *integer, default(30)* - approximate number of seconds for a FRIDGE_MODE=TEMP or
   MECH cooling cycle
 

@@ -30,7 +30,7 @@ The circuit will NOT include a relay to control a water cooling pump, but that
 could easily be added.
 
 Unfortunately there are no schematics of the Danfoss Inverter and so I have had
-to reverse engineer it's behavior empirically.   I have two different units.
+to [reverse engineer](analysis.md) it's behavior empirically.   I have two different units.
 There is an **101N0212** currently on the pump.  I also have a spare **101N0220**
 I used for reverse engineering on my desk (without a compressor).
 
@@ -51,7 +51,7 @@ The documentation of the fridgeController is broken up into several pages:
 ## B. Design Overview
 
 Physically, I have decided to break the physical design into two
-circuits.  Each parts will have a PCB and a 3D printed box..
+circuits.  Each part will have a PCB and a 3D printed box..
 
 The first part is the **miniBox** which is relatively simple, and
 which will sit atop the inverter in a 3D printed enclosure.  The

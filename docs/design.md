@@ -207,7 +207,7 @@ the ESP32 memory, and are reset to zero on a reboot.
   it turns the compressor on, indicating the rpms the compressor
   is running at, or trying to achieve.  A non-zero value lights
   up the *Blue LED* on the Controller board.
-- **INV_ERROR** - *intger 0-7* - is set to the number of flashes the
+- **INV_ERROR** - *integer 0-7* - is set to the number of flashes the
   inverter DIAG_DIODE (the Red LED on both PCBs) is currently flashing.
   TODO: Tooltip and Document chart of flash meanings.
 - **INV_PLUS** - *bool 0/1* - is set when the ground relative voltage of
@@ -231,13 +231,14 @@ the ESP32 memory, and are reset to zero on a reboot.
 ### Commands
 
 - **CLEAR_ERROR** - this IOT command takes advantage of the note that
-  when the compressor RPM is 0, and there is an INV_ERROR, it is possible
-  to clear the INV_ERROR on the inverter by briefly turning the compressor
-  on (via PWM to MIN_RPM) and off again in 1/2 second.  The inverter resets
-  its state in preperation for a restart attempt, but we turn the PWM off
-  before it actually tries a restart.
+  it is possible to clear the INV_ERROR on the inverter by turning the
+  PWM Off, then On briefly, then Off again briefly, before possibly turning
+  it On again based on the FRIDGE_MODE.
 
-CLEAR_ERROR can only be used when the FRIDGE_MODE is OFF, there is an INV_ERROR,
+  The inverter resets its state in preperation for a restart attempt, but
+  we turn the PWM off before it actually tries a restart.
+
+CLEAR_ERROR can only be used when there is an INV_ERROR,
 and WITH_PWM is compiled into the code.
 
 
@@ -298,6 +299,7 @@ most of which can be edited.
   If connected as a STA, the STA_SSID of the device is shown as the status
 - **POWER** - shows the sensed voltage into the Inverter (12V) and the
   sensed voltage from the Buck Converter (5V) powering the ESP32.
+- **CLEAR_ERROR** - Screen only shows up if there is an INV_ERROR. Clears the INV_ERROR for an immediate restart attempt.
 - **SETPOINT_HIGH** - Allows for editing the SETPOINT_HIGH value.
 - **SETPOINT_LOW** - Allows for editing the SETPOINT_LOW value.
 - **FRIDGE_MODE** - Allows for editing the FRIDGE_MODE enumerated value.
