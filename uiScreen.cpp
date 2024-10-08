@@ -67,10 +67,12 @@
 #define SCREEN_IP_ADDRESS       1
 #define SCREEN_POWER            2
 #define FIRST_IOT_SCREEN        3
-#define NUM_IOT_SCREENS         11
+#define SCREEN_CLEAR_ERROR      3
+#define NUM_IOT_SCREENS         12
 #define NUM_SCREENS             (FIRST_IOT_SCREEN + NUM_IOT_SCREENS)
 
 const char *edit_ids[NUM_IOT_SCREENS] = {
+    ID_CLEAR_ERROR,
     ID_SETPOINT_HIGH,
     ID_SETPOINT_LOW,
     ID_FRIDGE_MODE,
@@ -417,6 +419,8 @@ bool uiScreen::onButton(int button_num, int event_type)
         if (event_type == BUTTON_TYPE_CLICK)
         {
             int new_screen = (m_screen_num + 1) % NUM_SCREENS;
+            if (new_screen == SCREEN_CLEAR_ERROR && !fridge->_inv_error)
+                new_screen++;
             setScreen(new_screen);
         }
         else if (event_type == BUTTON_TYPE_LONG_CLICK)

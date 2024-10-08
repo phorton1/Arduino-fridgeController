@@ -87,6 +87,9 @@ int Fridge::m_fridge_temp_error;
 int Fridge::m_comp_temp_error;
 int Fridge::m_extra_temp_error;
 
+volatile bool in_clear_error;
+
+
 
 //------------------------------
 // Application Vars
@@ -297,20 +300,41 @@ void Fridge::clearInvError()
 	// I noticed during reverse engineering that I can clear the
 	// DIAG flashing LED by briefly turning the inverter on and
 	// off quick enough so that it resets its state, but does not
-	// have enough time to do an actual start attemp. This only
-	// works when the PWM is at 0 in the first place, i.e. when
-	// FRIDGE_MODE==OFF.
+	// have enough time to do an actual start attempt.
+	//
+	// This method is aware of the RPM and will clear the error
+	// and initiate an immediate restart attempt if the RPM is
+	// not zero at the call.
 {
-	if (_inv_error && _fridge_mode == FRIDGE_MODE_OFF && WITH_PWM)
+	if (in_clear_error)
 	{
+		LOGE("clearInvError() re-entered");
+	}
+	else if (_inv_error && WITH_PWM)
+	{
+		LOGD("clearInvError(%d) rpm=%d",_inv_error,cur_rpm);
+		
+		in_clear_error = true;
+
+		if (cur_rpm)		// turn the compressor off first
+		{
+			LOGD("    setting rpm(0)");
+			cur_rpm = 0;
+			ledcWrite(PWM_CHANNEL, 0);
+			delay(250);
+		}
 		ledcWrite(PWM_CHANNEL, DUTY_5MA);
-		delay(500);
+		delay(250);
 		ledcWrite(PWM_CHANNEL, 0);
+		delay(250);
+
+		_inv_error = 0;
+		in_clear_error = false;
 	}
 	else
 	{
-		LOGE("Attempt to clearInvError(%d) in FRIDE_MODE(%d) WITH_PWM(%d)",
-			 _inv_error,_fridge_mode,WITH_PWM);
+		LOGE("Attempt to clearInvError(%d) WITH_PWM(%d)",
+			 _inv_error,WITH_PWM);
 	}
 }
 
@@ -419,30 +443,33 @@ void Fridge::stateMachine()
 		LOGW("FridgeMode(%d)",_fridge_mode);
 	}
 
-	int rpm = 0;
-	if (v_sense._plus_on)
+	if (!in_clear_error)	// dont change rpm while in a clearError() call
 	{
-		if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
-			rpm = _min_rpm;
-		else if (_fridge_mode == FRIDGE_MODE_RUN_MAX)
-			rpm = _max_rpm;
-		else if (_fridge_mode == FRIDGE_MODE_RUN_USER)
-			rpm = _user_rpm;
-		else if (_fridge_mode == FRIDGE_MODE_RUN_MECH)
-			rpm = cur_mech_therm ? _user_rpm : 0;
-		else if (_fridge_mode == FRIDGE_MODE_RUN_TEMP)
+		int rpm = 0;
+		if (v_sense._plus_on)
 		{
-			if (cur_fridge_temp > _setpoint_high)
+			if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
+				rpm = _min_rpm;
+			else if (_fridge_mode == FRIDGE_MODE_RUN_MAX)
+				rpm = _max_rpm;
+			else if (_fridge_mode == FRIDGE_MODE_RUN_USER)
 				rpm = _user_rpm;
-			else if (cur_fridge_temp < _setpoint_low)
-				rpm = 0;
-			else
-				rpm = cur_rpm;
+			else if (_fridge_mode == FRIDGE_MODE_RUN_MECH)
+				rpm = cur_mech_therm ? _user_rpm : 0;
+			else if (_fridge_mode == FRIDGE_MODE_RUN_TEMP)
+			{
+				if (cur_fridge_temp > _setpoint_high)
+					rpm = _user_rpm;
+				else if (cur_fridge_temp < _setpoint_low)
+					rpm = 0;
+				else
+					rpm = cur_rpm;
+			}
 		}
-	}
 
-	if (rpm != cur_rpm)
-		setRPM(rpm);
+		if (rpm != cur_rpm)
+			setRPM(rpm);
+	}
 
 	
 }	// stateMachine()
