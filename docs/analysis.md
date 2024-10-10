@@ -145,6 +145,13 @@ C++ source code.
 ## B. Starting, Running, and Errors
 
 The behavior of the inverter is complicated and difficult to explain.
+Here is a plot showing the
+FAN/DIODE+ **red**, FAN- **green**, and DIAG_DIODE **green** lines,
+showing the raw (0..4095) samples at the corresponding input pins
+on the ESP32, during a failed startup attempt.
+
+![analysis_ErrorStart_plot.jpg](images/analysis_ErrorStart_plot.jpg)
+
 
 **(a) INITIAL STATE  (no C-T connection)**
 
@@ -157,7 +164,11 @@ a 5V regulator (so they would be below 5V if the BATT+ was less than, say,
 6V or so).
 
 The LED is not flashing (DIODE- is not pulled down) and the FAN is not
-running (FAN- is not pulled down).
+running (FAN- is not pulled down).  This is visible on the left of the
+above plot as the **red** line (FAN/DIODE+) is high, the **green** line
+(FAN-) is high and the **blue** DIAG_DIODE line (DIODE- inverted by miniBox
+transistor) is low.
+
 
 It is only when the C&T pins are connected (a current flows from T to C),
 that a "startup attempt" will be made, and it is only after a startup
@@ -179,7 +190,8 @@ error_state(2), flashing twice every four seconds, and nothing else will happen.
 
 Otherwise, the inverter makes three rapid attempts to start the pump.  If it
 fails to start the pump, it starts the fan and goes into error_state(3),
-flashing 3 times every four seconds
+flashing 3 times every four seconds  In the above plot, you can see the three flashes of
+the LED as indicated by the **blue line**.
 
 **(c) TIMED RESTART**
 

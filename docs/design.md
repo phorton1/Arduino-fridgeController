@@ -82,10 +82,10 @@ initial state.
 For each configuration value, we give it's default value, and
 describe what it is or does.
 
-- **FRIDGE_MODE** - *enum, default(RUN_MIN)* - sets one of several
+- **FRIDGE_MODE** - *enum, default(Off)* - sets one of several
   alternative modes of operation for the controller.  By
-  default, the refridgerator will attempt to start and
-  run the compressor continuously at its MIN_RPM value.
+  default, this is **Off** and so must be set by the User
+  to start the refridgerator.
   Please see below for more discussion of FRIDGE_MODE.
 - **SETPOINT_HIGH** - *float, temperature, default(-12C)* -
   a temperature above which the compressor will be started in
@@ -142,7 +142,7 @@ describe what it is or does.
 - **TEMP_SENSE_SECS** - *integer, default(30), minimum(10)* - How often
   in seconds, to read the temperature sensors, and hence, invoke
   any control algorithmns.
-- **INV_SENSE_MILLIS** - *integer, default 20* - how often to read
+- **INV_SENSE_MS** - *integer, default 20* - how often to read
   the voltages from the inverter to determine the compressor's
   operational state.  At 50 times per second, it is accurate enough
   to detect and count the DIAG_DIODE blinking. The instantaneous
@@ -216,13 +216,6 @@ the ESP32 memory, and are reset to zero on a reboot.
 - **INV_FAN** - *bool 0/1* - is set when the relative
   voltage of the FAN- pin from the invertor drops below a certain threshold.
   Displayed as the the Yellow LED on both PCBs.
-- **INV_COMPRESS** - *bool 0/1* -  set to one when the controller
-  sets the RPMs of the compressor to a non-zero value.
-  Displayed as the Blue LED on the Controller board..
-  **NOTE** - *It is up to the user to understand that the blue diode does not
-  necessarily mean a running compressor and they must also look
-  at the RED DIAG DIODE and see that it is not flashing for
-  this determination.*
 - **VOLTS_INV** - *float, 0..18* - the actual voltage measured for FAN/DIODE+,
   which serves as a proxy for the compressor power supply
 - **VOLTS_5V** - *float, 0..12*, the voltage of the 5V pin on the ESP32.
@@ -247,6 +240,12 @@ and WITH_PWM is compiled into the code.
 - **BACKLIGHT_SECS** - *ingeger, default(15) max(120)* - 
   How long the LCD back light will stay on after booting or any button press.
   A value of 120 means "forever", never turn the backlight off.
+- **LED_BRIGHTNESS** - *integer, default(30) max(254)* -
+  Sets the brightness of the external WS2812B LEDs.  Note that
+  values under 5 turn the LED off completely, and certain colors
+  are not visible under values of 10, so 10 is the effective
+  minimum value of this LED.
+  
 
 
 ## C. LCD and button UI
@@ -255,6 +254,13 @@ The device's native UI has an LCD Screen and three buttons.
 
 
 ### Buttons
+
+The backlight comes on automatically if
+
+- any inverter errors
+- WIFI is ON and the Controller is not connected as a station IOT_CONNECT_STA
+- any temperature sensing errors
+- any failure to write to the log file
 
 If the backlight is off any button press is eaten to turn backlight on.
 Otherwise:
@@ -279,9 +285,11 @@ The main screen Top Line shows
 
 The main screen Second Line Shows:
 
-- **Fridge Mode** - Off, MIN, MAX, USER, MECH, or TEMP
-- **Wifi Status** - W_OFF, STA, AP, AP_STA, or W_ERR
-- **SD Card State** - SD or NO_SD if there is/was a problem initializing the SD
+- **Fridge Mode** - *Off, MIN, MAX, USER, MECH,* or *TEMP*
+- **Wifi Status** - *W_OFF, STA, AP, AP_STA*, or *W_ERR*
+- **SD Card State** - *SD* if everything is good,
+  *NO_SD* if there is/was a problem initializing the SD, or
+  *ELOG* if there is a problem logging (bad RTP)
 
 Note that the SD is crucial for logging data, and without it, the Logfile will
 contain many errors.  Note also that having the device successfully connect
@@ -307,6 +315,7 @@ most of which can be edited.
 - **MIN_RPM** - Allows for editing the MIN_RPM value.
 - **MAX_RPM** - Allows for editing the MAX_RPM value.
 - **BACKLIGHT_SECS** - Allows for editing the BACKLIGHT_SECS value.
+- **LED_BRIGHTNESS** - Adjusts the brightness of the external WS2812B LEDs
 - **DEGREE_TYPE** - Allows for editing the device's DEGREE_TYPE enumerated value.
 - **WIFI** - Allows the unit to turn WIFI off and on; Off is a bad idea (no clock!)
 - **STA_SSID** - Shows the STA_SSID for debugging
@@ -330,8 +339,119 @@ If no buttons are pressed for 15 seconds, the system will return
 to the MAIN_SCREEN, terminating any edit in progress.
 
 
+## D. Extern WS2812B LEDs
 
-## D. Initial Implementation Notes
+The Controller supports placing a strip of two WS2812b LEDs outside
+of the box to show the overall status of the System and Compressor.
+In my case, the Controller is mounted inside of a cabinet, and I
+want a quick visual indication of the functioning of the refridgerator
+at all times that I can see from anywhere in the Salon of the boat.
+
+The first LED is called the **SYSTEM_LED** and shows the state of
+the Wifi connection and logging capabilities, and the second one
+is called the **STATE_LED** and shows the state of the inverter
+and compressor.
+
+### SYSTEM_LED
+
+When everything is operating properly the SYSTEM_LED will be
+**Green** indicating that the Controller is connected to the
+Wifi LAN as a STATION, has successfully gotten the NTP (actual)
+time from the internet, that there is an SD Card, that Data Logging
+is working correctly, and that there are no problems with the
+temperature sensors.
+
+If there are problems with the temperature sensors, the LED
+will **flash Red** once times every four seconds, and if
+there is some kind of problem with Data Logging it will
+flash Red twice every four seconds. If both problems are
+present it will flash 3 times **every four seconds**.
+
+- **One Red Flash** - there was a problem reading the temperature sensors
+- **Two Red Flashes** - there was a problem writing the Data Log to the SD Card.
+- **Three Red Flashes* - both problems have occurred.
+
+Otherwise, or in addition, the LED will take on off several colors
+to indicate the state of the **Wifi Connection**
+
+- **Green** - the system is connected as a station to the Wifi LAN
+- **Cyan** - the WiFi has been turned off by the user (bad idea!)
+- **Magenta** - the system is in AP Mode, broadcasting an SSID, as
+  it could not connect to the Wifi LAN as a station.
+- **Orange** - the system is in AP_STATION mode, meaning it has
+  succesfully connected as a station to the Wifi, but is waiting
+  30 seconds or so to turn off the Access Point.
+- **Red** - the Wifi is turned on, but is in an error state
+  (not initialized).
+
+The myIOT system is implemented in such a way that it allows for,
+and attempts to solve Wifi connectivity issues, as there is no
+such thing as a perfect Wifi connection.  On a fresh system, the
+LED will be *Magenta* indicating that it is AP Mode, broadcasting
+an SSID as it waits for you to connnect to it the first time,
+change the system password, and provide the Wifi credentials
+for logging on the Wifi LAN, at which point it should turn *Orange*,
+and then *Green*.
+
+It is not unusual for the Controller to temporarily lose the Wifi
+connection, turn *Red* for a moment (WiFi Error), revert to AP mode
+(*Magenta*) for a few minutes, and then successfully connect to
+the Wifi in AP_STATION mode (*Orange*) before it turns off the
+Access Point and gets back to STATION mode (*Green*).
+
+Note that Data Logging will fail if the system does not have
+a good setting for it's internal clock, which it gets from
+the internet via NTP, so base colors besides Green *could*
+indicate a problem with Data Logging as well, but that
+problems with Data Logging are separately indicated by
+flashing Red.
+
+Temporary Wifi outages or failed connections will not necessarily
+cause Data Logging to Fail if the system has successfully
+gotten the NTP time from the internet at least once since
+it was booteed.
+
+
+### STATE_LED
+
+The STATE_LED is essentially a combination of the four (Green,
+Yellow, Red, and Blue) LEDS on the face of the controller.
+
+It shows one of the three base colors:
+
+- **Blue** - the compressor RPMs have been set, indicating
+that the compressor is trying to start, or is running.
+- **Yellow** - the compressor RPMs have not been set, but
+the Fan is running.
+- **Green** - the inverter power supply is present.
+
+And will **flash the RED led** as the Red LED (Diag Diode)
+on the Controller/miniBox flashes.
+
+
+## E. Diag Diode Flash Codes
+
+A flashing RED Led on the miniBox, Controller, or STATE_LED
+indicates a problem, based on the number of times it flashes
+every four seconds, which we also call the INV_ERROR (inverter
+error code), in the range 1 to 5.  The flashes have the following
+meanings:
+
+- **one flash** - There inverter **power supply** has dropped below
+  the cutoff voltage (default 10.6V) and the inverter has shut down.
+- **two flashes** - The inverter detected an **overload of the FAN**
+  power supply, and has shut down.
+- **three flashes** - The inverter **failed to start the compressor**.
+- **four flashes** - The **compressor stalled** due to high pressure
+  in the system.
+- **five flashes** - The compresser got **too hot** turned off due to
+  a thermal protection circuit.
+
+These are the standard Danfoss/Secop/Waeco/Alder Barbour flashing
+diagnostic error codes.
+
+
+## F. Initial Implementation Notes
 
 I have to try this to see if and how it works.   At this time I believe
 that I will allow the compressor to use its own Automatic restart mode
@@ -348,20 +468,6 @@ time.
   implement some kind of a restart protection, like "if it doesn't start
   automatically after 10 Cmpressor retries" stop trying and set a new
   INV_ERROR Code(8) to display it.
-
-
-### WS2812 LED not initially implemented
-
-The WS2812 LED is not initially implemented.  Later I envision
-it to carry the basic green, yellow, red, and blue diodes outside
-of the box, and/or to indicate the Wifi and/or System state and/or
-additional error information.
-
-There also may be an WS2812 LED for the Wifi and/or System state,
-in addition to the Green, Yellow, Red, and Blue diodes on the
-Controller box.  Future Hardware revision may get rid of the
-actual LEDs in the current design and just use WS2812's
-for simplicity and to save ESP32 pins.
 
 
 ### DS18B20 Calibration

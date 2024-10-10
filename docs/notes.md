@@ -69,10 +69,10 @@ that are presented on the *Config* tab of the WebUI if the feature
 is compiled in.
 
 - **USE_FAKE** - *bool 0/1* - Whether to use the fakeCompressor or not.
-- **RESET_FAKE** - *command* - A comman to reset the fake Compressor to some initial values
+- **RESET_FAKE** - *command* - A command to reset the fake Compressor to some initial values
   (FRIDGE_TEMP=-16C, COMP_TEMP=FAKE_AMBIENT)
 - **FAKE_COMP_ON** - *bool 0/1* - Emulates turning the 12V power supply Off or On.
-- **FAKE_AMBIENT** - *float, temperature, default(26.67C)* - the ambient temperature used for th emodel.
+- **FAKE_AMBIENT** - *float, temperature, default(26.67C)* - the ambient temperature used for the model.
 - **FAKE_PERIOD** - *integer, default(30)* - approximate number of seconds for a FRIDGE_MODE=TEMP or
   MECH cooling cycle
 
