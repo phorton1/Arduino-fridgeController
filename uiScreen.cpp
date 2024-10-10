@@ -5,6 +5,12 @@
 //
 // BACKLIGHT
 //
+//      is turned on automatically, and stays on if
+//          - no SD (data logging wont work)
+//          - bad NTP time (data logging wont work)
+//          - inverter error
+//          - temperature sens errors
+
 //      will go off if _backlight_secs != BACKLIGHT_ALWAYS_ON
 //      and there are no button presses for _backlight secs.
 //
@@ -68,7 +74,7 @@
 #define SCREEN_POWER            2
 #define FIRST_IOT_SCREEN        3
 #define SCREEN_CLEAR_ERROR      3
-#define NUM_IOT_SCREENS         12
+#define NUM_IOT_SCREENS         13
 #define NUM_SCREENS             (FIRST_IOT_SCREEN + NUM_IOT_SCREENS)
 
 const char *edit_ids[NUM_IOT_SCREENS] = {
@@ -80,6 +86,7 @@ const char *edit_ids[NUM_IOT_SCREENS] = {
     ID_MIN_RPM,
     ID_MAX_RPM,
     ID_BACKLIGHT_SECS,
+    ID_LED_BRIGHTNESS,
     ID_DEGREE_TYPE,
     ID_WIFI,
     ID_STA_SSID,
@@ -254,22 +261,52 @@ void uiScreen::loop()
     if (now - m_last_refresh > REFRESH_MS)
     {
         m_last_refresh = now;
-        int secs = fridge->_backlight_secs;
-        if (secs != BACKLIGHT_ALWAYS_ON)
+
+        // if any error states, turn the backlight on
+        // and leave it on after error states turn off
+        // by setting m_activity_time on any changes
+        
+        static bool last_force;
+        bool force = (fridge->getBool(ID_WIFI) &&
+             fridge->getConnectStatus() != IOT_CONNECT_STA) ||
+            fridge->_inv_error ||
+            fridge->m_log_error ||
+            fridge->m_fridge_temp_error ||
+            fridge->m_comp_temp_error;
+        if (force && !m_backlight)
         {
-            if (now - m_activity_time > (secs * 1000))
+            backlight(1);
+        }
+        if (last_force != force)
+        {
+            last_force = force;
+            m_activity_time = now;
+        }
+
+       // if !force && backlight timeout, turn it off
+
+        if (!force && m_backlight)
+        {
+            int secs = fridge->_backlight_secs;
+            if (secs != BACKLIGHT_ALWAYS_ON)
             {
-                setScreen(0);
-                backlight(0);
+                if (now - m_activity_time > (secs * 1000))
+                {
+                    setScreen(SCREEN_MAIN);
+                    backlight(0);
+                }
             }
         }
 
-        // activity timeout
+        // in all cases goto SCREEN_MAIN on activity timeout
 
         if (m_screen_num && now - m_activity_time > ACTIVITY_TIMEOUT)
-            setScreen(0);
+            setScreen(SCREEN_MAIN);
 
-        showScreen();
+        // and finally, if the backlight is on, draw the screen
+        
+        if (m_backlight)
+            showScreen();
     }
 
     ui_buttons.loop();
@@ -514,8 +551,8 @@ void uiScreen::showScreen()
         // Compressor RPM     ####    ERR1..ERR7                width 4 right justified
         //
         // Fridge Mode        Off_,MIN_,MAX_,USER,MECH,TEMP     width 5 incl folowing space
-        // WIFI State         W_OFF,STA,AP,AP_STA,W_ERR           width 7 incl following space
-        // SD State           __SD/NOSD                         width 4
+        // WIFI State         W_OFF,STA,AP,AP_STA,W_ERR         width 7 incl following space
+        // SD State           __SD/NOSD/ELOG                    width 4
 
         static String last_main1;
         static String last_main2;
@@ -533,7 +570,7 @@ void uiScreen::showScreen()
             else if (mode == IOT_CONNECT_STA)
                 wifi = "STA";
             else
-                wifi = "W_OFF";
+                wifi = "W_ERR";
         }
 
         printBufFloat(buf1,5,fridge->_fridge_temp,fridge->m_fridge_temp_error);
@@ -542,7 +579,11 @@ void uiScreen::showScreen()
 
         printBufStr(buf2,5,fridgeModes[fridge->_fridge_mode]);
         printBufStr(buf2,7,wifi);
-        printBufStr(buf2,4,fridge->hasSD()?"  SD":"NOSD",true);
+        printBufStr(buf2,4,
+            fridge->hasSD() ?
+            fridge->m_log_error ?
+                "ELOG":"SD":"NOSD",
+            true);
 
         if (screen_changed || last_main1 != buf1)
         {

@@ -27,9 +27,9 @@ public:
 	void		sense();		// call 20 times per second
 
 	int			_error_code;	// current # flashes on inv DIAG_DIOD
+	bool		_diag_on;
 	bool 		_plus_on;		// 1 if inverter has power
 	bool		_fan_on;		// 1 if fan is on
-	bool		_compress_on;	// 1 if compressor is logically on
 
 	float		_volts_inv;		// voltage plus as proxy for inverter voltage, to 1 decimal place
 	float		_volts_5V;		// buck converter output to 1 decimal place

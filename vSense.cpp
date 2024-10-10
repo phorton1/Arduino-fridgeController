@@ -102,7 +102,7 @@ void vSense::init()
 
 
 
-#if 0
+#if 1
 	#include <esp_adc_cal.h>
 
 	float readToVolts(int val)
@@ -239,8 +239,17 @@ void vSense::sense()
 	{
 		last_volt_sample = now;
 
-		float volt_inv = VOLTS_PLUS(sample_val[SAMPLE_PLUS]);
-		float volt_5V = VOLTS_5V(sample_val[SAMPLE_5V]);
+		#define CALIB_12V		(12.0 / 2.2)
+		#define CALIB_5V		(5.0 / 1.6)
+			// initial calibration constants determined
+			// by measurments after readToVolts() returned
+			// 2.2 and 1.6 respectivly
+
+		// LOGD("sample 12V(%d) 5V(%d)",sample_val[SAMPLE_PLUS],sample_val[SAMPLE_5V]);
+		float volt_inv = readToVolts(sample_val[SAMPLE_PLUS]) * CALIB_12V;
+			// VOLTS_PLUS(sample_val[SAMPLE_PLUS]);
+		float volt_5V = readToVolts(sample_val[SAMPLE_5V]) * CALIB_5V;
+			// VOLTS_5V(sample_val[SAMPLE_5V]);
 
 		addVoltSample(VOLTAGE_INV,volt_inv);
 		addVoltSample(VOLTAGE_5V,volt_5V);
@@ -275,8 +284,6 @@ void vSense::sense()
 
 	#endif	// WITH_WS
 	
-
-	static bool diode_on;
 	static int flash_count;
 
 	static uint32_t cycle_start;
@@ -320,15 +327,15 @@ void vSense::sense()
 
 	// note diode change if power is on
 
-	if (diode_on != d_on)
+	if (_diag_on != d_on)
 	{
-		diode_on = d_on;
-		digitalWrite(LED_DIODE_ON,diode_on);
+		_diag_on = d_on;
+		digitalWrite(LED_DIODE_ON,_diag_on);
 
 		// if the diode goes on, see if a count already started
 		// and if not, start one
 
-		if (diode_on)
+		if (_diag_on)
 		{
 			if (!count_start)
 			{
@@ -351,7 +358,7 @@ void vSense::sense()
 			// increment the flash count
 
 			flash_count++;
-			LOGV("DIODE %s count=%d",diode_on?"ON":"OFF",flash_count);
+			LOGV("DIODE %s count=%d",_diag_on?"ON":"OFF",flash_count);
 		}
 	}
 

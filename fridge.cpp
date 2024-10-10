@@ -14,6 +14,7 @@
 #include "uiScreen.h"
 #include "vSense.h"
 #include "tSense.h"
+#include "fridgePixels.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
 
@@ -29,6 +30,7 @@
 #define DEBUG_SETVALUE	0
 #define DEBUG_CHART_DATA_HTTP  0
 	// 0 turns off myIOTHTTP display of /chart_data request headers
+
 
 //-----------------------------------------------
 // data_log setup
@@ -83,9 +85,12 @@ tSense t_sense(&one_wire);
 
 // non myIOTDevice public static member variable initializations go here
 
+bool Fridge::m_log_error;
+
 int Fridge::m_fridge_temp_error;
 int Fridge::m_comp_temp_error;
 int Fridge::m_extra_temp_error;
+bool Fridge::m_force_pixels;
 
 volatile bool in_clear_error;
 
@@ -119,10 +124,17 @@ void Fridge::setup()
 
 	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
 	
+	setPixel(PIXEL_SYSTEM,0);
+	setPixel(PIXEL_STATE,0);
+	showPixels();
+
 	ui_screen.init();
 
 	myIOTDevice::setup();
 	randomSeed(time(NULL) + millis() + micros());
+
+	setPixelsBrightness(_led_brightness);
+	showPixels();
 
 	//----------------------------------------
 	// continuing generic myIOTDevice setup
@@ -186,6 +198,10 @@ void Fridge::setup()
 
     proc_leave();
 
+    ui_screen.backlight(1);
+		// reset the activity timeout so the screen
+		// doesn't immediately go blank due to long
+		// myIOTDevice::setup() 
     LOGD("Fridge::setup(%s) completed",getVersion());
 }
 
@@ -207,9 +223,17 @@ void Fridge::stateTask(void *param)
 
 void Fridge::onBacklightChanged(const myIOTValue *value, int val)
 {
+	LOGU("onBacklightChanged(%d)",val);
 	ui_screen.backlight(1);
 }
 
+void Fridge::onBrightnessChanged(const myIOTValue *desc, uint32_t val)
+{
+	LOGU("onBrightnessChanged(%d)",val);
+	setPixelsBrightness(val);
+	m_force_pixels = 1;
+
+}
 
 
 void Fridge::onSetPointChanged(const myIOTValue *value, float val)
@@ -385,6 +409,7 @@ void Fridge::stateMachine()
 	// temperature sensors
 	//---------------------------
 
+
 	static uint32_t last_tsense;
 	if (!last_tsense || now - last_tsense > (_temp_sense_secs * 1000))
 	{
@@ -422,7 +447,7 @@ void Fridge::stateMachine()
 			log_rec.temp2 = cur_comp_temp;
 			log_rec.mech  = cur_mech_therm;
 			log_rec.rpm   = cur_rpm;
-			data_log.addRecord((logRecord_t) &log_rec);
+			m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
 		#endif
 
 		// takes a a little over 2ms
@@ -471,7 +496,122 @@ void Fridge::stateMachine()
 			setRPM(rpm);
 	}
 
-	
+	//---------------------------
+	// pixels
+	//---------------------------
+
+	#define SYS_CYCLE_TIME	4000
+	#define SYS_FLASH_TIME  250
+	#define SYS_FLASH_COLOR MY_LED_RED
+
+	bool pixels_changed = 0;
+
+	static uint32_t cur_sys_error;		// current system error
+	static uint32_t sys_cycle_time;		// start of current system error flash cycle
+	static uint32_t	last_color_system;	// base solid color for system pixel
+	static uint32_t	last_color_state;	// solid (though possibly flashing) color for state pixel
+
+	//-------------------------
+	// system pixel shows Wifi status as solid color.
+	// We flash the system pixel Red to highlight certain error conditions.
+	//
+	//  - temperature sense errors (m_fridge_temp_error || m_comp_temp_error) = 1 flash
+	//	- any m_log_error = 2 flashes
+	//  - both = 3 flashes
+	//
+	// We report errors writing to the logfile as flashing, which could result from
+	// a bad/missing SD card, OR a failure to get NTP time as a STATION.  However,
+	// note that in loss of Station Connection, the system clock may still be
+	// accurate, and logging may continue to work even in AP mode, so we report
+	// the flashes separately.
+
+	uint32_t sys_error = 0;
+	if (m_fridge_temp_error || m_comp_temp_error)
+		sys_error += 1;
+	if (m_log_error)
+		sys_error += 2;
+
+	// start a new cycle on sys_error change
+
+	if (cur_sys_error != sys_error)
+	{
+		LOGD("SYS_ERROR(%d)",sys_error);
+		cur_sys_error = sys_error;
+		sys_cycle_time = now;
+	}
+
+	// start a new cycle every four seconds
+
+	if (cur_sys_error && now - sys_cycle_time > SYS_CYCLE_TIME)
+		sys_cycle_time = now;
+
+	// the default system LED color is CYAN == no wifi.
+	// we override it to red at appropriate points in the cycle
+	// if there's any system error by calculating 'since' as
+	// the millis since the cycle start, and if it is less
+	// than 'cur_sys_error' full on/off flash times ...
+
+	uint32_t color_system = MY_LED_CYAN;
+		// default color == WIFI_OFF
+	if (getBool(ID_WIFI))
+	{
+		iotConnectStatus_t wifi_mode = fridge->getConnectStatus();
+		if (wifi_mode == IOT_CONNECT_ALL)
+			color_system = MY_LED_ORANGE;
+		else if (wifi_mode == IOT_CONNECT_AP)
+			color_system = MY_LED_MAGENTA;
+		else if (wifi_mode == IOT_CONNECT_STA)
+			color_system = MY_LED_GREEN;
+		else
+			color_system = MY_LED_RED;
+	}
+
+	if (cur_sys_error)
+	{
+		uint32_t since = now - sys_cycle_time;
+		if (since < cur_sys_error * 2 * SYS_FLASH_TIME)
+		{
+			// develop a number where odd = ON and even == OFF
+			int num = since / SYS_FLASH_TIME;
+			if (num % 2)
+				color_system = SYS_FLASH_COLOR;
+		}
+	}
+
+
+
+	//--------------
+	// state pixel
+
+	uint32_t color_state = MY_LED_RED;
+	if (v_sense._diag_on)
+		color_state = MY_LED_RED;
+	else if (cur_rpm)
+		color_state = MY_LED_BLUE;
+	else if (v_sense._fan_on)
+		color_state = MY_LED_YELLOW;
+	else if (v_sense._plus_on)
+		color_state = MY_LED_GREEN;
+
+	//-------------
+	// show if changed
+
+	if (m_force_pixels || last_color_system != color_system)
+	{
+		last_color_system = color_system;
+		setPixel(PIXEL_SYSTEM,color_system);
+		pixels_changed = 1;
+	}
+	if (m_force_pixels || last_color_state != color_state)
+	{
+		last_color_state = color_state;
+		setPixel(PIXEL_STATE,color_state);
+		pixels_changed = 1;
+	}
+	if (pixels_changed)
+		showPixels();
+	m_force_pixels = 0;
+
 }	// stateMachine()
 
 
@@ -577,8 +717,6 @@ void Fridge::loop()
 			setBool(ID_INV_PLUS,v_sense._plus_on);
 		if (_inv_fan != v_sense._fan_on)
 			setBool(ID_INV_FAN,v_sense._fan_on);
-		if (_inv_compress != v_sense._compress_on)
-			setBool(ID_INV_COMPRESS,v_sense._compress_on);
 
 		if (_volts_inv != v_sense._volts_inv)
 			setFloat(ID_VOLTS_INV,v_sense._volts_inv);

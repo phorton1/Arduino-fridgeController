@@ -5,11 +5,14 @@
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
 #endif
+#include "fridgeToolTips.h"
 
 
 //------------------------------
 // myIOT setup
 //------------------------------
+
+#define DEFAULT_LED_BRIGHTNESS	30
 
 static valueIdType dash_items[] = {
 
@@ -26,7 +29,6 @@ static valueIdType dash_items[] = {
 	ID_STATUS,
 	ID_INV_PLUS,
 	ID_INV_FAN,
-	ID_INV_COMPRESS,
 	ID_VOLTS_INV,
 	ID_VOLTS_5V,
 
@@ -49,6 +51,7 @@ static valueIdType config_items[] = {
 	ID_CALIB_VOLTS_5V,
 
 	ID_BACKLIGHT_SECS,
+	ID_LED_BRIGHTNESS,
 
 #if WITH_FAKE_COMPRESSOR
 	ID_USE_FAKE,
@@ -112,11 +115,11 @@ const valDescriptor fridge_values[] =
 	{ID_INV_ERROR,          VALUE_TYPE_INT,		VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_error,       NULL,	{ .int_range	= {0,	0,		7}}, },
 	{ID_INV_PLUS,           VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_plus,        NULL,	},
 	{ID_INV_FAN,            VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_fan,         NULL,	},
-	{ID_INV_COMPRESS,       VALUE_TYPE_BOOL,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_inv_compress,    NULL,	},
 	{ID_VOLTS_INV,			VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_inv,		NULL,	{ .float_range	= {0,	0,	24}},	},
 	{ID_VOLTS_5V,			VALUE_TYPE_FLOAT,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_volts_5v,		NULL,	{ .float_range	= {0,	0,	24}},	},
 
 	{ID_BACKLIGHT_SECS,     VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_backlight_secs,  (void *) Fridge::onBacklightChanged, { .int_range	= {30,	15,	BACKLIGHT_ALWAYS_ON}}, },
+	{ID_LED_BRIGHTNESS,  	VALUE_TYPE_INT, 	VALUE_STORE_PREF,     	VALUE_STYLE_NONE,		(void *) &Fridge::_led_brightness,	(void *) Fridge::onBrightnessChanged, { .int_range = { DEFAULT_LED_BRIGHTNESS,  0,  254}} },
 	{ID_CHART_LINK,			VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_chart_link, },
 
 #if WITH_FAKE_COMPRESSOR
@@ -175,6 +178,7 @@ float	Fridge::_volts_inv;
 float	Fridge::_volts_5v;
 
 int		Fridge::_backlight_secs;
+int		Fridge::_led_brightness;
 String 	Fridge::_chart_link;
 
 
@@ -202,6 +206,7 @@ void setup()
     fridge = new Fridge();
     fridge->addValues(fridge_values,NUM_FRIDGE_VALUES);
 	fridge->setTabLayouts(dash_items,config_items);
+	fridge->addDerivedToolTips(fridge_tooltips);
     LOGU("fridgeController.ino setup() started on core(%d)",xPortGetCoreID());
 
     fridge->setup();

@@ -108,14 +108,14 @@ void fakeCompressor::run()
 
     if (every_so_often)
     {
-        float range = VOLTS_5V(4095);
-        float volts = random(100) - 50;
-        volts /= 100;
-        volts += 5;
-        float f_sample = 4095.0 * volts / range;     // convert to 0..4095 sample
-        g_sample_5V = f_sample;                      // convert to integer
+        #define SAMPLE_5V   1910
+            // empirically determined sample which will report about 5V
+
+        int one_volt = (SAMPLE_5V/5);
+        int rfactor = random(one_volt) - (one_volt/2);
+        g_sample_5V = SAMPLE_5V + rfactor;
         #if DEBUG_VOLTS
-            LOGD("   fake 5V(%0.3f)  g_sample_5V=%d",volts,g_sample_5V);
+            LOGD("   fake 5V(%d) rand(%d) base(%d)",g_sample_5V,rfactor,SAMPLE_5V);
         #endif
     }
 
@@ -142,14 +142,14 @@ void fakeCompressor::run()
         // set random inverter voltage +/- 0.5V
         if (!g_sample_plus || every_so_often)
         {
-            float range = VOLTS_PLUS(4095);
-            float volts = random(100) - 50;
-            volts /= 100;
-            volts += 12;
-            float f_sample = 4095.0 * volts / range;     // convert to 0..4095 sample
-            g_sample_plus = f_sample;                      // convert to integer
+            #define SAMPLE_12V      2680
+                // empirically determined sample which will report about 12V
+
+            int one_volt = (SAMPLE_12V/12);
+            int rfactor = random(one_volt) - (one_volt/2);
+            g_sample_plus = SAMPLE_12V + rfactor;
             #if DEBUG_VOLTS
-                LOGD("   fake 12V(%0.3f)  g_sample_plus=%d",volts,g_sample_plus);
+                LOGD("   fake 12V(%d) rand(%d) base(%d)",g_sample_plus,rfactor,SAMPLE_12V);
             #endif
         }
 

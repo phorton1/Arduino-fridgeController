@@ -67,16 +67,6 @@
 #define PWM_RESOLUTION			8
 
 
-// hardware defined voltage divider sample to voltage functions
-// initial calibration defaults set by measurments.
-// Note that the 5V pin on an ESP32 with VUSB=5.00V is only about 4.5V.
-
-// The program was returning 4.4V, so the difference, so in that
-// the initial calibration constant would be 1 + (0.1/4.4)
-
-#define VOLTS_PLUS(sample)	((float) (((float)sample)/4095.0) * 3.3) / (2000.0/(10000.0+2000.0))
-#define VOLTS_5V(sample)	((float) (((float)sample)/4095.0) * 3.3) / (4700.0/(10000.0+4700.0))
-
 //------------------------
 // myIOT definition
 //------------------------
@@ -126,13 +116,13 @@
 #define ID_INV_ERROR                "INV_ERROR"
 #define ID_INV_PLUS                 "INV_PLUS"
 #define ID_INV_FAN                  "INV_FAN"
-#define ID_INV_COMPRESS             "INV_COMPRESS"
 #define ID_VOLTS_INV				"VOLTS_INV"
 #define ID_VOLTS_5V					"VOLTS_5V"
 
 // fridge UI config/state values
 
 #define ID_BACKLIGHT_SECS			"BACKLIGHT_SECS"
+#define ID_LED_BRIGHTNESS			"LED_BRIGHTNESS"
 
 #define ID_CHART_LINK				"CHART_LINK"
 
@@ -192,7 +182,7 @@ public:
 	static String	_status_str;
 	static float	_fridge_temp;
 	static float	_comp_temp;
-	static float	_extra_temp;
+	static float	_extra_temp;	// not reported, logged, or charted at this time
 	static bool 	_mech_therm;
 	static int		_comp_rpm;
 	static int		_inv_error;
@@ -205,21 +195,25 @@ public:
 	// ui config/state values
 
 	static int		_backlight_secs;
+	static int		_led_brightness;
 	static String 	_chart_link;
 
 	// public states available to other objects
 
-	static int 		m_fridge_temp_error;
-	static int 		m_comp_temp_error;
-	static int 		m_extra_temp_error;
+	static bool		m_log_error;			// low level error calling myIOTDataLog::addRecord()
+	static int 		m_fridge_temp_error;	// low level error getting fridge temperature
+	static int 		m_comp_temp_error;		// low level error getting compressor temperature
+	static int 		m_extra_temp_error;		// low level error getting extra temperature
+	static bool		m_force_pixels;			// to force pixels redraw in onSetBrightness()
 
 	// methods
 
 	void setRPM(int rpm);
 	void stateMachine();
 	static void stateTask(void *param);
-	static void onBacklightChanged(const myIOTValue *value, int val);
 	static void onSetPointChanged(const myIOTValue *value, float val);
+	static void onBacklightChanged(const myIOTValue *value, int val);
+	static void onBrightnessChanged(const myIOTValue *desc, uint32_t val);
 	static void clearInvError();
 		// clears the DIAG flashing LED when FRIDGE_MODE==OFF
 		// by toggling the PWM on for 1/2 second. See implementation.
