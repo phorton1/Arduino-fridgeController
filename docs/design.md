@@ -283,6 +283,9 @@ The main screen Top Line shows
 - **Compressor RPM** - 0, or a value between 2000 and 3500, or an ERR#
   where # is the 1-6 Danfoss error code for the number of diode flashes.
 
+![design_SCREEN_MAIN.jpg](images/design_SCREEN_MAIN.jpg)
+
+
 The main screen Second Line Shows:
 
 - **Fridge Mode** - *Off, MIN, MAX, USER, MECH,* or *TEMP*

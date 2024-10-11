@@ -97,9 +97,12 @@ in the photos.
 
 ### Custom Blade Connector from Inverter to MiniBox
 
+[![elec_customBlade.jpg](images/elec_customBlade.jpg)](images/elec_customBlade_big.jpg)
+
 ### 8 Conductor Cable from MiniBox to Controller
 
-### Phoenix Plugs for BATT from inverter and output to FAN
+[![elec_miniBox_cable.jpg](images/elec_miniBox_cable.jpg)](images/elec_miniBox_cable_big.jpg)
+
 
 
 
@@ -220,6 +223,8 @@ C++ source code.
 I did several rounds of testing before Building the device with 3D
 printed enclosures and actually installing it on the boat.
 
+[![elec_integration_testing.jpg](images/elec_integration_testing.jpg)](images/elec_integration_testing_big.jpg)
+
 ### Calibrate Buck Convertor
 
 The first thing I did was attach a 12V power supply to the Controller PCB,
@@ -260,6 +265,8 @@ of the refrigerator and positioned the other one (the "compressor"
 temperature sensor) on the side of the refrigerator that gets hot
 when the compressor runs.
 
+[![elec_tempSensor.jpg](images/elec_tempSensor.jpg)](images/elec_tempSensor_big.jpg)
+
 I ran this for several days (while I developed myIOT data logging
 and charting) and was able to see a nice graph of the temperatures.
 
@@ -297,6 +304,8 @@ After many days of working on the fakeCompressor and messing around
 with **jqPlot**, and writing my own **iotPlot.js** library, and making
 the miniBox-to-Controller cable, I was ready to try to hook the Controller
 up via the miniBox PCB to the actual inverter on my desk.
+
+[![elec_PCB_populated.jpg](images/elec_PCB_populated.jpg)](images/elec_PCB_populated_big.jpg)
 
 I plugged it all in, including two temperature sensors, turned on the power supply,
 and pretty much everything worked as expected.  I was able to see the instantaneous

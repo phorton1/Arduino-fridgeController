@@ -7,6 +7,7 @@
 **[Notes](notes.md)** --
 **[Analysis](analysis.md)**
 
+[![build_Controller.jpg](images/build_Controller.jpg)](images/build_Controller_big.jpg)
 
 The original **Waeco Adler Barbour Cold Machine Board F-1886 Rev2** used on
 my boat's refrigeration system burned out.  It has failed several
