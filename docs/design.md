@@ -23,7 +23,7 @@ The main requirements for the **fridgeController** are as follows
 - allows use of a **mechanical thermostat** that has its own built-in setpoints
 - allows for direct **manual control** of the compressor
 - allows for setting the **compressor RPMs** either explicity,
-  or, algorithmically based on the temperature sensors and/or mechanical thermostate.
+  or, algorithmically based on the temperature sensors and/or mechanical thermostat.
 - has *Green, Yellow, and Red* **LEDs** that track those on the *miniBox*
 - has a *Blue* **LED** that indicates if the Controller has turned the Compressor on
   by setting a non-zero value for the *RPMs*
@@ -231,8 +231,8 @@ the ESP32 memory, and are reset to zero on a reboot.
   The inverter resets its state in preperation for a restart attempt, but
   we turn the PWM off before it actually tries a restart.
 
-CLEAR_ERROR can only be used when there is an INV_ERROR,
-and WITH_PWM is compiled into the code.
+  CLEAR_ERROR can only be used when there is an INV_ERROR,
+  and WITH_PWM is compiled into the code.
 
 
 ### UI Configuration Variables
@@ -294,9 +294,11 @@ The main screen Second Line Shows:
   *NO_SD* if there is/was a problem initializing the SD, or
   *ELOG* if there is a problem logging (bad RTP)
 
-Note that the SD is crucial for logging data, and without it, the Logfile will
-contain many errors.  Note also that having the device successfully connect
-as a STAtion and getting NTP time from the internet is also crucial to data logging.
+Note that the SD used for the logfile, and is crucial for logging data.
+Without it, the serial debugging output will contain many errors.
+Note also that having the device successfully connect as a STAtion
+and getting NTP time from the internet is also crucial to data logging.
+
 
 ### Other Screens
 

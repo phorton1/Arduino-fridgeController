@@ -154,6 +154,12 @@ power supply slightly changing:
 ![notes_fakeCompressorPlot.jpg](images/notes_fakeCompressorPlot.jpg)
 
 
+D. Laser Cut Plastic Tolerances
 
+Designed cut: 103x105
+Actual cut:  101.5x103.4mm
+
+The laser took about 0.75mm to the inside of the desired size.
+All holes are bigger than desired.
 
 [**Next**](analysis.md) A detailed Analysis of the Inverter ...

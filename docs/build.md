@@ -59,7 +59,7 @@ If you haven't already done so, prepare the PCB as follows:
   self tapping screws from the top.
 - place pieces of **black electrical tape** on each end of the LCD
   to minimize stray backlight from showing
-- *super glue* the Controller **Button Caps** onto the PCB buttons
+- *epoxy glue* the Controller **Button Caps** onto the PCB buttons
 - *hot glue* the Controller **Lens Shield** to the *Controller PCB*
 
 
@@ -180,6 +180,10 @@ When everything is working well you may:
 - provide **stress relief** for the wiriting
 
 and the system is considered to be **officially working!!!**
+
+*Note:* the Controller cover mounting scheme is horrible,
+requires **Cover Clips**, and **WILL BE REDESIGNED** the
+next time I have to print the Controller Box.
 
 
 [**Next:**](notes.md) Some various Notes about the fridgeController ...
