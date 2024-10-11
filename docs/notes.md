@@ -10,7 +10,9 @@
 
 ### A. New VALUE_STYLE_TEMPERATURE and DEGREE_TYPE style and value
 
-The base myIOTDevice now has a **DEGREES_TYPE** Value that can
+The base
+[myIOTDevice](https://github.com/phorton1/Arduino-libraries-myIOT)
+now has a **DEGREES_TYPE** Value that can
 be set by the user, and which may be *Centigrade* or *Farenheit*.
 Degrees are tagged with the new **VALUE_STYLE_TEMPERATURE** style
 and stored as VALUE_TYPE_FLOAT (32 bit floating point number) representing
@@ -35,15 +37,37 @@ for interpretation of logged data values by the webUI
 javascript.
 
 
-## B. Charting and Plotting
+## B. Data Logging, Charting, and Plotting
+
+A *bunch* of work was done to the
+[myIOT library](https://github.com/phorton1/Arduino-libraries-myIOT)
+to implement **Data Logging, Charting,** and realtime **Plotting**
+in the WebUI, as well as a nascent notion of device specific **Widgets**.
+
+These new capabilities have *not yet been documented* in the myIOT library,
+although this device, and the
+[Bilge Alarm](https://github.com/phorton1/Arduino-bilgeAlarm)
+have been modified to implement Widgets and Charting, and
+this device, and
+[theClock3](https://github.com/phorton1/Arduino-theClock3) have
+been updated to implement real-time plotting.
+
+At this time, as a result, it is very likely that the
+[myIOTServer](https://github.com/phorton1/base-apps-myIOTServer)
+has been broken and will not work correctly, which is semi-intentional,
+as my current plan is to rework the myIOTServer *away from being
+a Websocket emulator* into more of a pure *socket forwarder*, as
+I think it was **crashing often** on the rPi I use for it.
+
+In any case, the myIOTServer is probably broken at this time.
 
 
-### C. the fakeCompressor
+## C. the fakeCompressor
 
 In order to test the software, particularly the *Control Algorithms*,
 *Data Logging*, and *WebUI **Charting and Plotting***, on a *bare ESP32*
 without any PCB's, I spent quite a bit of time implementing the **fakeCompressor**,
-which is included (by default) if the compile define *WITH_FAKE=1*
+which is included (by default) if the compile define *WITH_FAKE_COMPRESSOR=1*
 is set when compiling the firmware.
 
 The fakeCompressor feature can entirely be turned ON and OFF with
