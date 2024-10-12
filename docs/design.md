@@ -48,13 +48,13 @@ a specific way.
 myIOTDevices use **Values** that are configured for the specific myIOTDevice.
 
 Values can have a **type**, a **storage type**, a **style**, and a number of other
-details that are used by the myIOTFramework to present the values on the webUI,
+details that are used by the myIOT framework to present the values on the webUI,
 store them to the NVS (non-volatile storage) when they change, and so on.
 
 Device specific values can be presented in the webUI on the "Dashboard" or
 the "Config" tabs.  All myIOTDevices share a number of common Values which
 are presented on the "Device" tab in the webUI.  In addition, the webUI lets
-one look at the files on the SPIFFS (embedded ESP32) file system, and the SD
+one look at the files on the SPIFFS (embedded ESP32 file system), and the SD
 Card, if any.  The fridgeController specifically has an SD Card where the
 history of various variables, and a logfile, are kept.
 
@@ -72,7 +72,7 @@ repository for more details about the general idea of myIOT Values.
 
 ### Configuration Values
 
-The following values are typically stored in NVS and showed on the
+The following values are stored in NVS and showed on the
 "Config" tab in the webUI, and represent the persistent "configuration"
 of the device which does not change between reboots.
 
@@ -80,7 +80,7 @@ A Factory Reset of the device will reset all NVS values to a known
 initial state.
 
 For each configuration value, we give it's default value, and
-describe what it is or does.
+describe what it is, or does.
 
 - **FRIDGE_MODE** - *enum, default(Off)* - sets one of several
   alternative modes of operation for the controller.  By
@@ -89,14 +89,14 @@ describe what it is or does.
   Please see below for more discussion of FRIDGE_MODE.
 - **SETPOINT_HIGH** - *float, temperature, default(-12C)* -
   a temperature above which the compressor will be started in
-  the RUN_TEMP mode. The defaults of -12C (10.4F) is well below
+  the RUN_TEMP mode. The default of -12C (10.4F) is well below
   freezing
 - **SETPOINT_LOW** - *float, temperature, default(-20C)* -
   a temperature below which the compressor will be turned off in
-  the RUN_TEMP mode. Defaults to -20C (-4.0F) a super solid freeze.
+  the RUN_TEMP mode. Defaults to -20C (-4.0F), a super solid freeze.
 - **USER_RPM** - *integer, default(2600)* - sets the RPM at
   which the compressor will normally run in the initial
-  impelementation.  Danfoss compressors can
+  implementation.  Danfoss compressors can
   typically run from 2000-3500 rpm, and so this value is
   limited in range from 2000 to 3500, and the default is
   somewhere in the middle.
@@ -118,7 +118,7 @@ describe what it is or does.
   set into the FRIDGE_TEMP Value.
   *The default value is currently set to the known ID
   of a DS18B20 sensor that I own, and a Factory Reset
-  will wipe out any user entered FRIDGE_SENSE_ID.
+  will wipe out any user entered FRIDGE_SENSE_ID.*
 - **COMP_SENSE_ID** - *string* - the ID of a DS18B20 temperature sensor
   that is used to monitor the temperature of the compressor.
   Readings from this sensor, rounded to one decimal point, are
@@ -150,11 +150,11 @@ describe what it is or does.
 - **CALIB_VOLTS_INV** - *float, default(1.0)* - a calibration factor
   used in reporting the VOLT_INV value (FAN_DIODE+ pin as proxy for
   the inverter input voltage). Can be set by measuring the actual
-  temperatures during installation with a multi-meter.
+  voltages during installation with a multi-meter.
 - **CALIB_VOLTS_5V** - - *float, default(1.0)* - a calibration factor
   used in reporting the VOLT_5V value (buck convertor output). Set
   during [Electronics](electronics.md) Integration Testing by measuring
-  with the output of the Buck Converter.
+  the output of the Buck Converter.
 
 
 Note that SETPOINT_HIGH must be above SETPOINT_LOW by
@@ -367,16 +367,16 @@ is working correctly, and that there are no problems with the
 temperature sensors.
 
 If there are problems with the temperature sensors, the LED
-will **flash Red** once times every four seconds, and if
+will **flash Red** one (1) time every four seconds, and if
 there is some kind of problem with Data Logging it will
-flash Red twice every four seconds. If both problems are
-present it will flash 3 times **every four seconds**.
+flash Red twice (2) every four seconds. If both problems are
+present it will flash three (3) times **every four seconds**.
 
 - **One Red Flash** - there was a problem reading the temperature sensors
 - **Two Red Flashes** - there was a problem writing the Data Log to the SD Card.
-- **Three Red Flashes* - both problems have occurred.
+- **Three Red Flashes** - both problems have occurred.
 
-Otherwise, or in addition, the LED will take on off several colors
+Otherwise, or in addition, the LED will take be one of several base colors
 to indicate the state of the **Wifi Connection**
 
 - **Green** - the system is connected as a station to the Wifi LAN
@@ -414,7 +414,7 @@ flashing Red.
 Temporary Wifi outages or failed connections will not necessarily
 cause Data Logging to Fail if the system has successfully
 gotten the NTP time from the internet at least once since
-it was booteed.
+it was booted.
 
 
 ### STATE_LED
@@ -442,7 +442,7 @@ every four seconds, which we also call the INV_ERROR (inverter
 error code), in the range 1 to 5.  The flashes have the following
 meanings:
 
-- **one flash** - There inverter **power supply** has dropped below
+- **one flash** - The inverter **power supply** has dropped below
   the cutoff voltage (default 10.6V) and the inverter has shut down.
 - **two flashes** - The inverter detected an **overload of the FAN**
   power supply, and has shut down.
@@ -471,7 +471,7 @@ time.
   which takes the COMP_TEMP into account.
 - It may be desireable to *Count Restart Attempts* and/or
   implement some kind of a restart protection, like "if it doesn't start
-  automatically after 10 Cmpressor retries" stop trying and set a new
+  automatically after 10 compressor retries" stop trying and set a new
   INV_ERROR Code(8) to display it.
 
 
@@ -480,7 +480,7 @@ time.
 In practice different DS18B20's give different readings
 when at the same temperature.  I don't have any good
 temperature references or measuring tools that I really
-trust, so, at this time the best I could do test all
+trust, so, at this time the best I could do would be to test all
 my DS18B20's at various temperatures and try to develop
 a "calibration scheme" that would get them to report
 "about" the same temperatures under the same contions.

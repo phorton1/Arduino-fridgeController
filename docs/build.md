@@ -123,7 +123,7 @@ the **Red** *ERROR LED* should **NOT BE FLASHING!!**.
 You may leave it on until you notice some cooling occuring in the
 system if you wish.
 
-Wwhen you are ready to proceed to the next
+When you are ready to proceed to the next
 step, **turn the main inverter power supply off**.
 
 You may now

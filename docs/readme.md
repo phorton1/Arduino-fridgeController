@@ -97,9 +97,9 @@ generally, to override the controller.
   OVERRIDE is turned on.
 
 As mentioned before, the compressor can be run and used
-with just the miniBox.  In the even that it fails for some
+with just the miniBox.  In the event that it fails for some
 reason, it may quickly be removed, and as long as the main
-12V power supply to the inverter, the compressor can be
+12V power supply to the inverter is supplied, the compressor can be
 run at low speed by merely shorting the T&C pins on the
 inverter.
 
@@ -117,10 +117,10 @@ The Controller has the following connectors:
   sensors**
 - a single **2 pin JST connector** for connection to an optional
   **mechanical thermostat**
-- a **3 pin JST connector** for output to an external **WS2812B
-  LED*s* that can be mounted on the controller, and/or outside
+- a **3 pin JST connector** for output to external **WS2812B
+  LED*s** that can be mounted on the controller, and/or outside
   of the cabinet for a general visual indication of the state
-  of the freezer.
+  of the system and inverter/compressor.
 
 ![home_controller_diagram.jpg](images/home_controller_diagram.jpg)
 
@@ -186,7 +186,7 @@ but not limited to:
 - [Arduino IDE and Libraries](https://www.arduino.cc/)
 - [Espressif Systems](https://www.espressif.com/en/products/socs/esp32)
 - [Adafruit NeoPixel Library](https://github.com/adafruit/Adafruit_NeoPixel)
-- **jQuery**, **Bootstrap**, and the [jqPlot](**http://www.jqplot.com/) javascript libraries
+- **jQuery**, **Bootstrap**, and the [jqPlot](Xhttp://www.jqplot.com/) javascript libraries
 
 
 ## License

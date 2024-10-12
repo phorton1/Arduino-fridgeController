@@ -86,10 +86,10 @@ After the initial PCB was created I noticed two problems.
 
 Both of these problems have been corrected in the kicad schematics and PCB
 layouts. I jury rigged solutions to both of these on the
-exiat PCB.  The first one is shown as the brown wire on the photo of the
+already-produced PCB.  The first one is shown as the brown wire on the photo of the
 bottom of the soldered Controller PCB above but the second one,
 the addition of a 1N4003 backflow preventer diode is not shown
-in the photos.
+in the photos and was added later.
 
 
 
@@ -242,7 +242,7 @@ Then plugged in the **1602A LCD** and rebooted, noting that I couldn't
 see any characters.  After unplugging the LCD and turning the *Contrast
 Potentiometer* on the LCD module all the way up, and plugging it back it,
 I was able to see characters on it. I then re-iteravely
-unplugged, adjusted the contrast, and re-plugged the LCD out and in
+unplugged, adjusted the contrast, and re-plugged the LCD in 
 until I got a contrast I liked.
 
 *Note that the ESP32 outputs about 4.6V to the "5V" pin when connected
@@ -309,7 +309,7 @@ up via the miniBox PCB to the actual inverter on my desk.
 
 I plugged it all in, including two temperature sensors, turned on the power supply,
 and pretty much everything worked as expected.  I was able to see the instantaneous
-**plot** of the voltages, and a nice chart of the temperatures (even though they
+**plot** of the voltages, and a nice **chart** of the temperatures (even though they
 were just sitting on my desk at a near constant 30C).
 
 I spent several days here just refining things, writing and expanding the
