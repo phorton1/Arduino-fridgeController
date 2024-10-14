@@ -132,7 +132,8 @@ static void doRead(int i, int pin)
 
 	// YIKES - I'm not even using the circular buffer and don't remember
 	// where I left it vis-a-vis testing with real inverter!
-	sample_val[i] = analogRead(pin);	// sample_sum[i] / NUM_PIN_SAMPLES;
+	// sample_val[i] = analogRead(pin);
+	sample_val[i] = sample_sum[i] / NUM_PIN_SAMPLES;
 }
 
 
@@ -358,7 +359,7 @@ void vSense::sense()
 			// increment the flash count
 
 			flash_count++;
-			LOGV("DIODE %s count=%d",_diag_on?"ON":"OFF",flash_count);
+			LOGD("DIODE(%d) %s count=%d",sample_val[SAMPLE_DIODE],_diag_on?"ON":"OFF",flash_count);
 		}
 	}
 
