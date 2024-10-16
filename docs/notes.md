@@ -154,12 +154,158 @@ power supply slightly changing:
 ![notes_fakeCompressorPlot.jpg](images/notes_fakeCompressorPlot.jpg)
 
 
-D. Laser Cut Plastic Tolerances
+## D. Laser Cut Plastic Tolerances
 
 Designed cut: 103x105
 Actual cut:  101.5x103.4mm
 
 The laser took about 0.75mm to the inside of the desired size.
 All holes are bigger than desired.
+
+
+## E. Post Installation Notes (Design Ideas)
+
+After installing the controller and running the freezer for about 3 days
+I have some general observations, largely specific to my boat.
+
+- The freezer/refridgerator is poorly insulated
+- The freezer cannot reach my design target setpoints of -12C and -20C
+- The apparent largest determinant of compressor temperature is the ambient temperature
+- The FAN as controlled by the Inverter leaves much to be desired
+- I probably want additional sensors and another FAN
+
+Here is the chart of the first 3-4 days of the temperature runs.  The blue line
+is the freezer temperature ranging from about 40F down to 20F, the orange line is
+the compressor temperature ranging from ambient 90F upto about 115F, and the
+green line shows the RPMS, which have been tried at 2000, 2600, and 3200 rpms,
+with most of the time being in the middle at 2600 rpms:
+
+![notes_postInstallationChart1.jpg](images/notes_postInstallationChart1.jpg)
+
+### Initial Boots - Compressor heats rapidly when turned off.
+
+I actually ran it for a bit before the above chart, using just the miniBox.
+
+So when I added and turned on the Controller for the first time, it starts with
+the freezer around 40F, well below ambient, and the compressor
+a bit above ambient at about 90F.  I started by running at the minimum 2000 rpms
+just to get a feel for how it would work.  I briefly tried increasing the rpms
+to 2600, and then to 3200, and tried turning the compressor on and off.
+
+Most of the time if the green line drops to zero it indicates a reboot. However
+it also drops to zero when I manually turn the compressor off.
+
+This is when I noticed two important facts.
+
+- if the Compressor is turned off, the **FAN goes off immediately**
+- if the Compressor is turned off, it **rapidly heats up**
+
+When the Compressor is stopped the fluid stops flowing through the
+radiator, and so almost all cooling of the compressor itself
+stops as the main cooling is from the fan blowing on the radiator.
+Plus the FAN stops immediately, excacerbating the issue.
+
+When the Compressor comes back on, it cools, relatively speaking,
+fairly quickly as soon as the fluid starts flowing and the FAN is
+turned back on.
+
+This results in the spikes and sharp drops in the compressor temperature
+in the above diagram during the *Initial boots*.
+
+After the first few hours of messing with it, I decided to leave it at
+**2600 rpms** for an extended period of time to see how the freezer
+temperature would actually work. It took about *12 hours* to get below 32F
+to a freezing range.
+
+### Bug Fix & Restarts (effect of closet door)
+
+The next morning I went to the boat and did some simple physical experiments.
+The peak in compressor temperature around Oct8 at 8:00am is when I closed
+the closet door, trapping all the heat of the compressor in the closet.
+Subsequently I opened the closet door and the temperature of the compressor
+dropped considerably.
+
+It took **forever** for the temperature of the freezer itself to get
+significant;y below freezing.
+
+I was messing with the data logging code and introduced a crashing
+bug, and so had to reboot the device several times during the day
+as I resolved the bug.   By now I am clearly starting to see the
+daily ambient temperature. It has been about 95F during the day
+and perhaps 75F at coldest at night, and largely the compressor
+tracks the daily ambient temperature cycle.
+
+You can also see the the freezer itself reflects that daily cycle
+as it tends cooler overal, but has definite waves that correspond
+to the daily cycle.  Nonetheless, the **lowest temperature I
+have seen thus far has been about -6C or about 21F** which,
+unfortunately well above my target SETPOINT_HIGH.  FWIW, the
+refridgerator in the apartment had no problem reaching that
+and tended to cycle between -12C and -20C.
+
+
+### General Observation
+
+At this point I feel it is unlikely that there is any useful
+efficiency optimization to be had by turning the compressor
+off and on, and probably none to be had by varying its speed.
+
+More testing needs to be done.
+
+
+### Israel Arrives - Ice Cube Trays
+
+On Oct15 Israel arrived at the boat for his normal 4-day work week.
+Nothing much changed, until about 6pm when he closed the closet door
+causing the compressor temperature to rise noticably.
+
+He probably opened and closed the refridgerator several times, which
+has no sharp distinction in the chart, but rather, caused the freezer
+to slighly increase in temperature.
+
+Incidentally, on the morning of the 16th, I made a small code change
+and rebooted the system, and coincidentally, at about that same point
+in time, Israel put four fresh (warm water) ice-cube trays into the
+freezer. This caused the air temperature near the sensor the briefly
+rise to above 32F (the ice cube trays were placed next to, very close
+to the temperature sensor).  In normal practice we would not place
+four ice cube trays in at one time, and generally place new ones
+as far as possible from frozen foods, so I don't think it would
+have an effect on the sanctity of frozen foods.
+
+
+### Design Thoughts
+
+- I need to have a vent and additional fan from the closet to the exterior of the boat
+- I may want the Controller to control the radiator fan independently of the inverter
+- I need to close the big hole in the back of the freezer where the coolant comes in
+- The whole thing needs better insulation.
+
+The effect of closing the closet is way too noticable.   The main determinant of
+compressor temperature (and hence cooling efficiency) is the ambient temperature
+around the compressor, so I need to remove warm air from the top, and pull cool
+room air into the bottom, of the closet.
+
+Also, note that the closet is adjacent to the poorly insulated freezer, and
+so some of the heat from the compressor is actually making its way into the
+freezer.
+
+I am not sure of the utility of having independent control of the radiator fan.
+After all, the cooling fluid stops flowing when the compressor stops, and so
+coolant flow is probably a much larger determinant of the compressor temperature
+than is the air flow.   Nonetheless, blowing air over the radiator when the
+compressor turns off (say for 10 minutes or so), will cool the liquid itself
+and lend to cooling and easier restarts.
+
+
+### Further Testing
+
+I need to test it at full RPMs and do more physical experiments.
+
+I don't really want to design new circuits, boxes, covers, etc,
+but I would at least need to change the controller if I (highly desireable)
+add a closet venting fan and tube to the outside of the boat.
+
+
 
 [**Next**](analysis.md) A detailed Analysis of the Inverter ...
