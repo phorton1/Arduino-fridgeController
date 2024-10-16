@@ -55,7 +55,7 @@
 		{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
 		{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
 		{"mech",	LOG_COL_TYPE_UINT32,		1,		},
-		{"rpm",		LOG_COL_TYPE_UINT32,		500,	},
+		{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
 	};
 
 	myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
