@@ -2,10 +2,12 @@
 
 #include "fridge.h"
 
-#define PIXEL_STATE     1
-#define PIXEL_SYSTEM    0
 
-#define NUM_PIXELS		2
+#define PIXEL_SYSTEM    2
+#define PIXEL_STATE     1
+#define PIXEL_ERROR		0
+
+#define NUM_PIXELS		3
 
 
 //----------------------------------

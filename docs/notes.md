@@ -231,71 +231,111 @@ significant;y below freezing.
 I was messing with the data logging code and introduced a crashing
 bug, and so had to reboot the device several times during the day
 as I resolved the bug.   By now I am clearly starting to see the
-daily ambient temperature. It has been about 95F during the day
-and perhaps 75F at coldest at night, and largely the compressor
-tracks the daily ambient temperature cycle.
+daily ambient temperature cycle in the chart. It has been about
+95F during the day and perhaps 75F at coldest at night, and the
+compressor temperature tracks the daily ambient temperature cycle.
 
 You can also see the the freezer itself reflects that daily cycle
-as it tends cooler overal, but has definite waves that correspond
+as it tends cooler overall, but has definite waves that correspond
 to the daily cycle.  Nonetheless, the **lowest temperature I
 have seen thus far has been about -6C or about 21F** which,
-unfortunately well above my target SETPOINT_HIGH.  FWIW, the
-refridgerator in the apartment had no problem reaching that
-and tended to cycle between -12C and -20C.
+unfortunately well above my target SETPOINT_HIGH of -12C (10.4F),
+much less my SET_POINTLOW of -20C (-4F) .
 
-
-### General Observation
-
-At this point I feel it is unlikely that there is any useful
-efficiency optimization to be had by turning the compressor
-off and on, and probably none to be had by varying its speed.
-
-More testing needs to be done.
+FWIW, the commercially built refridgerator in the apartment had
+no problem reaching those kinds of tempertures and tended to cycle
+between -12C and -20C.
 
 
 ### Israel Arrives - Ice Cube Trays
 
 On Oct15 Israel arrived at the boat for his normal 4-day work week.
 Nothing much changed, until about 6pm when he closed the closet door
-causing the compressor temperature to rise noticably.
+causing the compressor temperature to rise noticably. I verified this
+with him on the morning of Oct16, and last thing in the graph you
+can see the compressor temperature drop rapidly after I opened the
+closed door.
 
-He probably opened and closed the refridgerator several times, which
-has no sharp distinction in the chart, but rather, caused the freezer
-to slighly increase in temperature.
+Regarding the freezer temperature, you see the normal daily cycle,
+with perhaps a bit of overall warming. He probably opened and closed
+the refridgerator several times while he was making dinner, which
+apparently has no sharp distinction in the chart, but rather, I think,
+caused the freezer to slighly increase in temperature.
 
-Incidentally, on the morning of the 16th, I made a small code change
-and rebooted the system, and coincidentally, at about that same point
-in time, Israel put four fresh (warm water) ice-cube trays into the
-freezer. This caused the air temperature near the sensor the briefly
-rise to above 32F (the ice cube trays were placed next to, very close
-to the temperature sensor).  In normal practice we would not place
-four ice cube trays in at one time, and generally place new ones
-as far as possible from frozen foods, so I don't think it would
-have an effect on the sanctity of frozen foods.
+Then, on the morning of the 16th, I made a small code change
+and rebooted the system (where the green line drops to zero),
+and coincidentally, at about that same point in time, Israel put
+four fresh (warm water) ice-cube trays into the freezer.
+
+I was alarmed at first, thinking the temperature change was due
+to a code issue, but when went to the boot, I confirmed with him
+that he had just happened to put the ice-cube trays in around the
+time I was rebooting.
+
+This caused the air temperature near the sensor the briefly, and
+rapidly, rise to above 32F. The ice cube trays were placed next to,
+very close to, the temperature sensor.
+
+I don't think the measurement of the air near the ice-cube trays
+is representative of the overall freezer temperature.  In normal
+practice (a) we would not place four ice cube trays in at one time,
+and (b) generally place new stuff as far as possible from existing
+frozen foods.
+
+Overall, I think I am just learning more details about the freezer
+I've been using for more than 17 years.
+
+After I wrote this note, I did another graph and the temprature
+of the freezer continues to fall.  It will take time to judge
+how the addition of the ice-cube trays affected the overall performance
+of the compressor/freezer.
 
 
 ### Design Thoughts
 
-- I need to have a vent and additional fan from the closet to the exterior of the boat
-- I may want the Controller to control the radiator fan independently of the inverter
-- I need to close the big hole in the back of the freezer where the coolant comes in
-- The whole thing needs better insulation.
+My initial thoughts with regards to the overall system after this
+brief interlude are somewhat as follows:
+
+- I NEED to have a **vent and additional fan** from the closet to the exterior of the boat
+- I *may want* the Controller to control the radiator fan independently of the inverter
+- I NEED to close the big hole in the back of the freezer where the coolant comes in
+- The whole freezer couold have better insulation
+- I probably want more temperature sensors (refridgerator vs freezer, ambient, etc)
+- I probably will never use the mechanical thermostat again, but I will probably
+  leave it in the circuit, and hook it up and test it
+- The use of separate LEDs on the controller is pin-wasteful.  I could use WS2812b's
+  instead and free up four pins.
 
 The effect of closing the closet is way too noticable.   The main determinant of
 compressor temperature (and hence cooling efficiency) is the ambient temperature
 around the compressor, so I need to remove warm air from the top, and pull cool
-room air into the bottom, of the closet.
+room air into the bottom, of the closet. Also, note that the closet is adjacent
+to the poorly insulated freezer, and so some of the heat from the compressor is
+actually making its way into the freezer, so the temperature of the closet is
+doubly affecting the temperature of the freezer.
 
-Also, note that the closet is adjacent to the poorly insulated freezer, and
-so some of the heat from the compressor is actually making its way into the
-freezer.
+From a circuit design perspective, this means I **probably want a 5V relay
+that delivers 12V** to a new additional Fan (or blower) that runs out the
+top of the boat (to an existing water resistant vent).
 
 I am not sure of the utility of having independent control of the radiator fan.
 After all, the cooling fluid stops flowing when the compressor stops, and so
 coolant flow is probably a much larger determinant of the compressor temperature
 than is the air flow.   Nonetheless, blowing air over the radiator when the
 compressor turns off (say for 10 minutes or so), will cool the liquid itself
-and lend to cooling and easier restarts.
+and lend to cooling and easier restarts.  This change would require circumventing
+the inverter's control of the FAN and **likely another 5V relay**.
+
+I suspect these relays might want to be on the miniBox PCB rather than the
+Controller PCB so I don't have to run the 12V actual FAN power to the Controller
+and back to the closet.
+
+- more temperature sensor plugs
+- two 5V relays that control 12V fans
+- somehow allow miniBox to still work stand-alone
+- use WS2812 LEDs rather than individual LEDs on Controller.
+
+
 
 
 ### Further Testing

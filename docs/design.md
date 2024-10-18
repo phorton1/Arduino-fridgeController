@@ -419,8 +419,8 @@ it was booted.
 
 ### STATE_LED
 
-The STATE_LED is essentially a combination of the four (Green,
-Yellow, Red, and Blue) LEDS on the face of the controller.
+The STATE_LED is essentially a combination of the three (Green,
+Yellow, and Blue) LEDS on the face of the controller.
 
 It shows one of the three base colors:
 
@@ -430,8 +430,12 @@ that the compressor is trying to start, or is running.
 the Fan is running.
 - **Green** - the inverter power supply is present.
 
-And will **flash the RED led** as the Red LED (Diag Diode)
+### ERROR_LED
+
+Will **flash the RED led** if the Red LED (Diag Diode)
 on the Controller/miniBox flashes.
+
+
 
 
 ## E. Diag Diode Flash Codes

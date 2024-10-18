@@ -2,6 +2,7 @@
 #include "fridge.h"
 #include <myIOTLog.h>
 #include "tSense.h"
+#include "fridgePixels.h"
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
 #endif
@@ -189,6 +190,23 @@ String 	Fridge::_chart_link;
 
 void setup()
 {
+	// first indicator
+
+	pinMode(LED_POWER_ON,OUTPUT);
+	pinMode(LED_FAN_ON,OUTPUT);
+	pinMode(LED_DIODE_ON,OUTPUT);
+	pinMode(LED_COMPRESS_ON,OUTPUT);
+
+	digitalWrite(LED_POWER_ON,1);
+	digitalWrite(LED_FAN_ON,0);
+	digitalWrite(LED_DIODE_ON,0);
+	digitalWrite(LED_COMPRESS_ON,0);
+
+	setPixel(PIXEL_SYSTEM,MY_LED_CYAN);
+	setPixel(PIXEL_STATE,0);
+	setPixel(PIXEL_ERROR,0);
+	showPixels();
+
     Serial.begin(MY_IOT_ESP32_CORE == 3 ? 115200 : 921600);
     delay(1000);
 
@@ -210,6 +228,18 @@ void setup()
     LOGU("fridgeController.ino setup() started on core(%d)",xPortGetCoreID());
 
     fridge->setup();
+
+	// clear indicators
+	
+	digitalWrite(LED_FAN_ON,0);
+	digitalWrite(LED_POWER_ON,0);
+	digitalWrite(LED_DIODE_ON,0);
+	digitalWrite(LED_COMPRESS_ON,0);
+
+	setPixel(PIXEL_SYSTEM,0);
+	setPixel(PIXEL_STATE,0);
+	setPixel(PIXEL_ERROR,0);
+	showPixels();
 
     LOGU("fridgeController.ino setup() finished",0);
 }

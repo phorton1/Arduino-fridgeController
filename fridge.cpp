@@ -45,7 +45,7 @@
 		uint32_t	dt;	// filled in by dataLog
 		float		temp1;
 		float		temp2;
-		uint32_t	mech;
+		float		temp3;
 		uint32_t	rpm;
 	} fridgeLog_t;
 	
@@ -54,7 +54,7 @@
 	logColumn_t  fridge_cols[] = {
 		{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
 		{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-		{"mech",	LOG_COL_TYPE_UINT32,		1,		},
+		{"extra",	LOG_COL_TYPE_TEMPERATURE,	10,		},
 		{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
 	};
 
@@ -122,19 +122,26 @@ void Fridge::setup()
     LOGD("Fridge::setup(%s) started",getVersion());
     proc_entry();
 
-	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
-	
-	setPixel(PIXEL_SYSTEM,0);
-	setPixel(PIXEL_STATE,0);
+	// second indicator
+
+	digitalWrite(LED_FAN_ON,1);
+	setPixel(PIXEL_STATE,MY_LED_CYAN);
 	showPixels();
 
+	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
+	
 	ui_screen.init();
 
 	myIOTDevice::setup();
 	randomSeed(time(NULL) + millis() + micros());
-
 	setPixelsBrightness(_led_brightness);
+
+	// third indicator
+
+	digitalWrite(LED_DIODE_ON,1);
+	setPixel(PIXEL_ERROR,MY_LED_CYAN);
 	showPixels();
+
 
 	//----------------------------------------
 	// continuing generic myIOTDevice setup
@@ -198,6 +205,10 @@ void Fridge::setup()
 
     proc_leave();
 
+	// fourth (LED only) indicator
+
+	digitalWrite(LED_COMPRESS_ON,1);
+	
     ui_screen.backlight(1);
 		// reset the activity timeout so the screen
 		// doesn't immediately go blank due to long
@@ -441,7 +452,7 @@ void Fridge::stateMachine()
 				 cur_rpm);
 		#endif
 
-		#if WITH_DATA_LOG
+		#if 0 && WITH_DATA_LOG
 			fridgeLog_t log_rec;
 			log_rec.temp1 = cur_fridge_temp;
 			log_rec.temp2 = cur_comp_temp;
@@ -504,15 +515,16 @@ void Fridge::stateMachine()
 	#define SYS_FLASH_TIME  250
 	#define SYS_FLASH_COLOR MY_LED_RED
 
-	bool pixels_changed = 0;
-
 	static uint32_t cur_sys_error;		// current system error
 	static uint32_t sys_cycle_time;		// start of current system error flash cycle
-	static uint32_t	last_color_system;	// base solid color for system pixel
-	static uint32_t	last_color_state;	// solid (though possibly flashing) color for state pixel
+	static uint32_t	last_color_system = MY_LED_WHITE;	// base solid color for possibly flashing system pixel
+	static uint32_t	last_color_state  = MY_LED_WHITE;	// solid color for state pixel
+	static uint32_t	last_color_error  = MY_LED_WHITE;	// black or red flashing error pixel
 
-	//-------------------------
-	// system pixel shows Wifi status as solid color.
+	//----------------
+	// system pixel
+	//----------------
+	// shows Wifi status as solid color.
 	// We flash the system pixel Red to highlight certain error conditions.
 	//
 	//  - temperature sense errors (m_fridge_temp_error || m_comp_temp_error) = 1 flash
@@ -578,39 +590,42 @@ void Fridge::stateMachine()
 		}
 	}
 
-
-
-	//--------------
 	// state pixel
 
 	uint32_t color_state = MY_LED_RED;
-	if (v_sense._diag_on)
-		color_state = MY_LED_RED;
-	else if (cur_rpm)
+	if (cur_rpm)
 		color_state = MY_LED_BLUE;
 	else if (v_sense._fan_on)
 		color_state = MY_LED_YELLOW;
 	else if (v_sense._plus_on)
 		color_state = MY_LED_GREEN;
 
-	//-------------
-	// show if changed
+	// error pixel
 
-	if (m_force_pixels || last_color_system != color_system)
+	uint32_t color_error = MY_LED_BLACK;
+	if (v_sense._diag_on)
+		color_error = MY_LED_RED;
+
+
+	//------------------------------
+	// show if changed
+	//------------------------------
+
+	if (m_force_pixels ||
+		last_color_system != color_system ||
+		last_color_state != color_state ||
+		last_color_error != color_error)
 	{
 		last_color_system = color_system;
-		setPixel(PIXEL_SYSTEM,color_system);
-		pixels_changed = 1;
-	}
-	if (m_force_pixels || last_color_state != color_state)
-	{
 		last_color_state = color_state;
+		last_color_error = color_error;
+
+		setPixel(PIXEL_SYSTEM,color_system);
 		setPixel(PIXEL_STATE,color_state);
-		pixels_changed = 1;
-	}
-	if (pixels_changed)
+		setPixel(PIXEL_ERROR,color_error);
 		showPixels();
-	m_force_pixels = 0;
+		m_force_pixels = 0;
+	}
 
 }	// stateMachine()
 
@@ -637,7 +652,7 @@ float round1(float val)
 	return ((float)ival) / 10.0;
 }
 
-void publishTemp(const char *id, float cur_value)
+bool publishTemp(const char *id, float cur_value)
 {
 	float cur = round1(cur_value);
 	float set = fridge->getFloat(id);
@@ -647,7 +662,9 @@ void publishTemp(const char *id, float cur_value)
 			LOGD("   setting %s(%0.3fC)=%0.3fF",id,set,centigradeToFarenheit(set));
 		#endif
 		fridge->setFloat(id, cur);
+		return 1;
 	}
+	return 0;
 }
 
 
@@ -672,9 +689,11 @@ void Fridge::loop()
 	ui_screen.loop();
 
 	// publish changes every couple of seconds
+	// and log temperature/rpm changes
 
 	#define PUBLISH_INTERVAL 	2000
 
+	bool do_log = 0;
 	uint32_t now = millis();
 	static uint32_t last_publish;
 	if (now - last_publish > PUBLISH_INTERVAL)
@@ -683,9 +702,12 @@ void Fridge::loop()
 
 		// publish temperatures
 
-		publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp);
-		publishTemp(ID_COMP_TEMP,cur_comp_temp);
-		publishTemp(ID_EXTRA_TEMP,cur_extra_temp);
+		if (publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp))
+			do_log = 1;
+		if (publishTemp(ID_COMP_TEMP,cur_comp_temp))
+			do_log = 1;
+		if (publishTemp(ID_EXTRA_TEMP,cur_extra_temp))
+			do_log = 1;
 
 		// publishs status
 
@@ -710,7 +732,10 @@ void Fridge::loop()
 		if (_mech_therm != cur_mech_therm)
 			setBool(ID_MECH_THERM,cur_mech_therm);
 		if (_comp_rpm != cur_rpm)
+		{
+			do_log = 1;
 			setInt(ID_COMP_RPM,cur_rpm);
+		}
 		if (_inv_error != v_sense._error_code)
 			setInt(ID_INV_ERROR,v_sense._error_code);
 		if (_inv_plus != v_sense._plus_on)
@@ -723,6 +748,18 @@ void Fridge::loop()
 		if (_volts_5v != v_sense._volts_5V)
 			setFloat(ID_VOLTS_5V,v_sense._volts_5V);
 	}
+
+	#if WITH_DATA_LOG
+		if (do_log)
+		{
+			fridgeLog_t log_rec;
+			log_rec.temp1 = _fridge_temp;
+			log_rec.temp2 = _comp_temp;
+			log_rec.temp3 = _extra_temp;
+			log_rec.rpm   = _comp_rpm;
+			m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
+		}
+	#endif
 }
 
 

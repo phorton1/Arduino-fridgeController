@@ -48,6 +48,7 @@ class uiScreen
         uint32_t m_activity_time;
         uint32_t m_last_refresh;
 
+        void clear();
         void displayLine(int line_num, const char *format, ...);
         void setScreen(int num);
         void init_edit_value();

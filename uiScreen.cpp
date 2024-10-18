@@ -38,13 +38,24 @@
 //      we get the float for editing on the off chance someone
 //      changes DEGREE_TYPE while a temperature is being edited.
 
+#define WITH_SSD1306    0       // small i2c OLED display
+    // otherwise its the big bulky old 1602LCD display
+
 
 #include "fridge.h"
 #include "uiScreen.h"
 #include "uiButtons.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
-#include <LiquidCrystal_I2C.h>
+
+#if WITH_SSD1306
+    #include <Wire.h>
+    #include <Adafruit_GFX.h>
+    #include <Adafruit_SSD1306.h>
+#else
+    #include <LiquidCrystal_I2C.h>
+#endif
+
 
 #define DEBUG_SCREEN  1
 
@@ -57,6 +68,9 @@
 
 #define LCD_ADDR    0x23        // current working fridge 1602A LCD ...
 // #define LCD_ADDR    0x27     // bilge_alarm and currently broken two
+
+
+
 #define LCD_LINE_LEN              16
 #define LCD_BUF_LEN               32    // for safety
 
@@ -151,15 +165,39 @@ const char *edit_ids[NUM_IOT_SCREENS] = {
 
 
 uiScreen  ui_screen;
-LiquidCrystal_I2C lcd(LCD_ADDR,LCD_LINE_LEN,2);   // 20,4);
-    // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+#if WITH_SSD1306
+
+    #define SCREEN_WIDTH    128     // OLED display width, in pixels
+    #define SCREEN_HEIGHT   64      // OLED display height, in pixels (little ones are 32, square ones 64)
+    #define OLED_RESET      -1      // Reset pin # (or -1 if sharing Arduino reset pin)
+
+    #define OLED_I2C_ADDR   0x3C    // works on all displays; sample prog has "0x3D for 128x64"
+
+    Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+#else
+    LiquidCrystal_I2C lcd(LCD_ADDR,LCD_LINE_LEN,2);   // 20,4);
+        // set the LCD address to 0x27 for a 16 chars and 2 line display
+#endif
 
 
 void uiScreen::init()
 {
     ui_buttons.init();
+#if WITH_SSD1306
+    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+    bool ok = oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR);
+    // No error handling for time being
+    if (ok)
+    {
+        oled.display();  // show built in Adafruit splash screen
+        delay(1000);
+        clear();
+    }
 
+#else
     lcd.init();                      // initialize the lcd
+#endif
     backlight(1);
 
     #if SHOW_BOOT_REASON
@@ -178,6 +216,17 @@ void uiScreen::init()
 // utilities
 //------------------------------
 
+void uiScreen::clear()
+{
+    #if WITH_SSD1306
+        oled.clearDisplay();
+        oled.display();
+    #else
+        lcd.clear();
+    #endif
+}
+
+
 void uiScreen::displayLine(int line_num, const char *format, ...)
 {
     va_list var;
@@ -194,8 +243,18 @@ void uiScreen::displayLine(int line_num, const char *format, ...)
         buffer[len++] = ' ';
     }
     buffer[len] = 0;
+
+#if WITH_SSD1306
+    #define LINE_HEIGHT         16      // 2 or 4 lines depending on LCD
+    oled.setTextSize(1);                // Font size
+    oled.setTextColor(WHITE,BLACK);     // White on Black text
+    oled.setCursor(0,line_num*16);      // Start at top-left corner
+    oled.print(buffer);
+    oled.display();
+#else
     lcd.setCursor(0,line_num);
     lcd.print(buffer);
+#endif
 }
 
 
@@ -242,10 +301,13 @@ void uiScreen::backlight(int val)
 {
     m_backlight = val;
     m_activity_time = millis();
-    if (val)
-        lcd.backlight();
-    else
-        lcd.noBacklight();
+#if WITH_SSD1306
+#else
+        if (val)
+            lcd.backlight();
+        else
+            lcd.noBacklight();
+#endif
 }
 
 
@@ -541,7 +603,7 @@ void uiScreen::showScreen()
     {
         last_screen_num = m_screen_num;
         screen_changed = true;
-        lcd.clear();
+        clear();
     }
 
     if (m_screen_num == SCREEN_MAIN)
@@ -588,16 +650,13 @@ void uiScreen::showScreen()
         if (screen_changed || last_main1 != buf1)
         {
             last_main1 = buf1;
-            lcd.setCursor(0,0);
-            lcd.print(buf1);
+            displayLine(0,"%s",buf1);
         }
         if (screen_changed || last_main2 != buf2)
         {
             last_main2 = buf2;
-            lcd.setCursor(0,1);
-            lcd.print(buf2);
+            displayLine(1,"%s",buf2);
         }
-
     }
     else if (m_screen_num == SCREEN_IP_ADDRESS)
     {
@@ -667,8 +726,14 @@ void uiScreen::showScreen()
             last_dirty != dirty)
         {
             last_dirty = dirty;
-            lcd.setCursor(15,0);
-            lcd.print(dirty ? "*" : " ");
+            #if WITH_SSD1306
+                oled.setCursor(127-8,0);
+                oled.print(dirty ? "*" : " ");
+                oled.display();
+            #else
+                lcd.setCursor(15,0);
+                lcd.print(dirty ? "*" : " ");
+            #endif
         }
     }
 }

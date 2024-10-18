@@ -77,27 +77,6 @@ void vSense::init()
 	pinMode(PIN_S_FAN,INPUT_PULLUP);
 	pinMode(PIN_S_DIODE,INPUT_PULLUP);
 	pinMode(PIN_S_5V,INPUT_PULLUP);
-
-	pinMode(LED_DIODE_ON,OUTPUT);
-	pinMode(LED_POWER_ON,OUTPUT);
-	pinMode(LED_COMPRESS_ON,OUTPUT);
-	pinMode(LED_FAN_ON,OUTPUT);
-
-#if FLASH_LEDS_AT_STARTUP
-	for (int i=0; i<10; i++)
-	{
-		digitalWrite(LED_POWER_ON, (i%5) == 1);
-		digitalWrite(LED_FAN_ON, (i%5) == 2);
-		digitalWrite(LED_DIODE_ON, (i%5) == 3);
-		digitalWrite(LED_COMPRESS_ON,(i%5) == 4);
-		delay(200);
-	}
-#endif
-
-	digitalWrite(LED_DIODE_ON,0);
-	digitalWrite(LED_POWER_ON,0);
-	digitalWrite(LED_COMPRESS_ON,0);
-	digitalWrite(LED_FAN_ON,0);
 }
 
 

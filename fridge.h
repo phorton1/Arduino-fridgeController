@@ -182,7 +182,7 @@ public:
 	static String	_status_str;
 	static float	_fridge_temp;
 	static float	_comp_temp;
-	static float	_extra_temp;	// not reported, logged, or charted at this time
+	static float	_extra_temp;
 	static bool 	_mech_therm;
 	static int		_comp_rpm;
 	static int		_inv_error;
