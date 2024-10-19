@@ -13,10 +13,33 @@
 
 <body>
 <div id='widget_content'></div>
+<div id='degree_div'>
+	<label for='degree_select'>Degree Type:</label>
+	<select name='degree_select' id='degree_select' onchange="onDegreeSelect()">
+		<option value='0'>Centigrade</option>
+		<option value='1'>Farenheit</option>
+	</select>
+</div>
+
 
 <script>
-	var DEGREE_TYPE = 0;
-		// no good way to set this in the chart itself
+	// denormalized var & function from iotCommon.js
+
+		var DEGREE_TYPE = 0;
+
+		function centigradeToFarenheit(centigrade)
+		{
+			var farenheit = (centigrade*9)/5 + 32;
+			return parseFloat(farenheit.toFixed(3));
+		}
+
+
+	function onDegreeSelect()
+	{
+		var ele = document.getElementById('degree_select');
+		DEGREE_TYPE = ele ? parseInt(ele.value) : 0;
+		doChart('fridgeData');
+	}
 		
 	function startWidget()
 	{
@@ -30,7 +53,7 @@
 				doChart('fridgeData');
 			}
 		}
-		xhr_html.open('GET', '/custom/chart_html/fridgeData?width=800&height=400&refresh=10', true);
+		xhr_html.open('GET', '/custom/chart_html/fridgeData?width=800&height=400&refresh=0', true);
 		xhr_html.send();
 	}
 
