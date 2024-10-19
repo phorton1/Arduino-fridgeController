@@ -301,7 +301,9 @@ void uiScreen::backlight(int val)
 {
     m_backlight = val;
     m_activity_time = millis();
+    LOGD("backlight(%d)",val);
 #if WITH_SSD1306
+        oled.dim(!val);
 #else
         if (val)
             lcd.backlight();
@@ -324,27 +326,32 @@ void uiScreen::loop()
     {
         m_last_refresh = now;
 
-        // if any error states, turn the backlight on
+        // If any error states, turn the backlight on
         // and leave it on after error states turn off
-        // by setting m_activity_time on any changes
-        
-        static bool last_force;
-        bool force = (fridge->getBool(ID_WIFI) &&
-             fridge->getConnectStatus() != IOT_CONNECT_STA) ||
-            fridge->_inv_error ||
-            fridge->m_log_error ||
-            fridge->m_fridge_temp_error ||
-            fridge->m_comp_temp_error;
-        if (force && !m_backlight)
-        {
-            backlight(1);
-        }
-        if (last_force != force)
-        {
-            last_force = force;
-            m_activity_time = now;
-        }
+        // by setting m_activity_time on any changes.
+        // Set define to 0 for "normal" activity timeout code
 
+        #if 1
+            static bool last_force;
+            bool force = (fridge->getBool(ID_WIFI) &&
+                 fridge->getConnectStatus() != IOT_CONNECT_STA) ||
+                fridge->_inv_error ||
+                fridge->m_log_error ||
+                fridge->m_fridge_temp_error ||
+                fridge->m_comp_temp_error;
+            if (force && !m_backlight)
+            {
+                backlight(1);
+            }
+            if (last_force != force)
+            {
+                last_force = force;
+                m_activity_time = now;
+            }
+        #else
+            bool force = 0;
+        #endif
+        
        // if !force && backlight timeout, turn it off
 
         if (!force && m_backlight)

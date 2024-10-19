@@ -124,7 +124,7 @@
 #define ID_BACKLIGHT_SECS			"BACKLIGHT_SECS"
 #define ID_LED_BRIGHTNESS			"LED_BRIGHTNESS"
 
-#define ID_CHART_LINK				"CHART_LINK"
+#define ID_CHART_LINK				"CHART"
 
 
 // fake compressor config values
