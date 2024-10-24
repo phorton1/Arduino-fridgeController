@@ -1,5 +1,5 @@
 //-----------------------------------------------
-// vSense.h - analog voltage sensors
+// fridgeVolts.h - analog voltage sensors
 //-----------------------------------------------
 // Circular buffer sensing of ESP32 analog in pins
 // for the inverter's FAN/DIODE+, FAN-, DIODE- voltage
@@ -18,11 +18,11 @@
 #pragma once
 
 
-class vSense
+class fridgeVolts
 {
 public:
 
-	vSense()	{}
+	fridgeVolts()	{}
 	void		init();			// call from setup()
 	void		sense();		// call 20 times per second
 
@@ -37,6 +37,6 @@ public:
 private:
 };
 
-extern vSense v_sense;
+extern fridgeVolts fridge_volts;
 
 

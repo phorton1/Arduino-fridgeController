@@ -1,5 +1,5 @@
 //-----------------------------------------
-// uiScreen.cpp
+// fridgeScreen.cpp
 //-----------------------------------------
 // rebooting currently only by turning controller off and then on
 //
@@ -43,10 +43,10 @@
 
 
 #include "fridge.h"
-#include "uiScreen.h"
-#include "uiButtons.h"
+#include "fridgeScreen.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
+#include <myIOTButtons.h>
 
 #if WITH_SSD1306
     #include <Wire.h>
@@ -164,7 +164,7 @@ const char *edit_ids[NUM_IOT_SCREENS] = {
 //------------------------------------------------
 
 
-uiScreen  ui_screen;
+fridgeScreen fridge_screen;
 
 #if WITH_SSD1306
 
@@ -181,9 +181,11 @@ uiScreen  ui_screen;
 #endif
 
 
-void uiScreen::init()
+void fridgeScreen::init()
 {
-    ui_buttons.init();
+    int button_pins[3] = {PIN_BUTTON1, PIN_BUTTON2, PIN_BUTTON3};
+    iot_buttons.init(3, button_pins, buttonStub);
+    
 #if WITH_SSD1306
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     bool ok = oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR);
@@ -216,7 +218,7 @@ void uiScreen::init()
 // utilities
 //------------------------------
 
-void uiScreen::clear()
+void fridgeScreen::clear()
 {
     #if WITH_SSD1306
         oled.clearDisplay();
@@ -227,7 +229,7 @@ void uiScreen::clear()
 }
 
 
-void uiScreen::displayLine(int line_num, const char *format, ...)
+void fridgeScreen::displayLine(int line_num, const char *format, ...)
 {
     va_list var;
     va_start(var, format);
@@ -297,7 +299,7 @@ void printBufFloat(char *buf, int width, float val, int err=0, bool right=false)
 }
 
 
-void uiScreen::backlight(int val)
+void fridgeScreen::backlight(int val)
 {
     m_backlight = val;
     m_activity_time = millis();
@@ -318,7 +320,7 @@ void uiScreen::backlight(int val)
 // loop()
 //---------------------------------------
 
-void uiScreen::loop()
+void fridgeScreen::loop()
 {
     uint32_t now = millis();
 
@@ -378,7 +380,7 @@ void uiScreen::loop()
             showScreen();
     }
 
-    ui_buttons.loop();
+    iot_buttons.loop();
 }
 
 
@@ -387,15 +389,15 @@ void uiScreen::loop()
 // setScreen() && init_edit_value()
 //-----------------------------------
 
-void uiScreen::setScreen(int screen_num)
+void fridgeScreen::setScreen(int screen_num)
 {
-    DBG_SCREEN("uiScreen::setScreen(%d)",screen_num);
+    DBG_SCREEN("fridgeScreen::setScreen(%d)",screen_num);
     m_screen_num = screen_num;
     init_edit_value();
 }
 
 
-void uiScreen::init_edit_value()
+void fridgeScreen::init_edit_value()
 {
     m_iot_value = 0;
     m_iot_style = 0;
@@ -494,7 +496,7 @@ void uiScreen::init_edit_value()
             !strcmp(m_value_id,ID_USER_RPM) ||
             !strcmp(m_value_id,ID_MIN_RPM) ||
             !strcmp(m_value_id,ID_MAX_RPM);
-        ui_buttons.setRepeatMask(m_use_repeat ? (0x2 | 0x4) : 0);
+        iot_buttons.setRepeatMask(m_use_repeat ? (0x2 | 0x4) : 0);
     }
 }
 
@@ -505,11 +507,18 @@ void uiScreen::init_edit_value()
 // onButton
 //-----------------------------------
 
-bool uiScreen::onButton(int button_num, int event_type)
+// static
+bool fridgeScreen::buttonStub(int button_num, int event_type)
+{
+    return fridge_screen.onButton(button_num,event_type);
+}
+
+
+bool fridgeScreen::onButton(int button_num, int event_type)
     // called from uiButtons::loop()
 {
     if (DEBUG_SCREEN > 1)
-        DBG_SCREEN("uiScreen::onButton(%d,%d)",button_num,event_type);
+        DBG_SCREEN("fridgeScreen::onButton(%d,%d)",button_num,event_type);
 
     // eat the keystroke to turn on backlight
 
@@ -602,7 +611,7 @@ bool uiScreen::onButton(int button_num, int event_type)
 // showScreen
 //-----------------------------------
 
-void uiScreen::showScreen()
+void fridgeScreen::showScreen()
 {
     bool screen_changed = false;
     static int last_screen_num = -1;

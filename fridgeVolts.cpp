@@ -1,5 +1,5 @@
 //-----------------------------------------------
-// vSense.cpp
+// fridgeVolts.cpp
 //-----------------------------------------------
 //
 // The compressor will try to start, I think, three times before
@@ -18,7 +18,7 @@
 // restart attempt.
 
 
-#include "vSense.h"
+#include "fridgeVolts.h"
 #include "fridge.h"
 #include <myIOTLog.h>
 #if WITH_FAKE_COMPRESSOR
@@ -68,10 +68,10 @@ static float volt_circ_buf[NUM_VOLTAGES][NUM_VOLT_SAMPLES];
 static int cur_volt_circ_idx;
 
 
-vSense v_sense;
+fridgeVolts fridge_volts;
 
 
-void vSense::init()
+void fridgeVolts::init()
 {
 	pinMode(PIN_S_PLUS,INPUT_PULLUP);
 	pinMode(PIN_S_FAN,INPUT_PULLUP);
@@ -84,7 +84,7 @@ void vSense::init()
 #if 1
 	#include <esp_adc_cal.h>
 
-	float readToVolts(int val)
+	static float readToVolts(int val)
 	{
 		esp_adc_cal_characteristics_t adc_chars;
 		esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1200, &adc_chars);
@@ -152,7 +152,7 @@ static float getVoltValue(int idx)
 
 
 
-void vSense::sense()
+void fridgeVolts::sense()
 	// important to only call every 50ms or so
 	// because this smooths the sensing of inputs
 {

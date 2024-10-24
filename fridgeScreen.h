@@ -1,22 +1,18 @@
 //-----------------------------------------
-// uiScreen.h
+// fridgeScreen.h
 //-----------------------------------------
 
 #pragma once
 
 
-class uiScreen
+class fridgeScreen
 {
     public:
 
-        uiScreen() {}
+        fridgeScreen() {}
         void init();
 
         void loop();
-        bool onButton(int button_num, int event_type);
-            // called from uiButtons::loop()
-            // return true if the BUTTON_TYPE_PRESS was handled
-            // return value ignored otherwise ..
 
         void backlight(int val);
 
@@ -43,7 +39,6 @@ class uiScreen
         int m_last_value;
         bool m_use_repeat;
 
-
         int m_backlight;
         uint32_t m_activity_time;
         uint32_t m_last_refresh;
@@ -53,9 +48,13 @@ class uiScreen
         void setScreen(int num);
         void init_edit_value();
         void showScreen();
+
+        bool onButton(int button_num, int event_type);
+        static bool buttonStub(int button_num, int event_type);
+
 };
 
 
-extern uiScreen ui_screen;
+extern fridgeScreen fridge_screen;
 
 

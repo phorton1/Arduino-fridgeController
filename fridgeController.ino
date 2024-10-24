@@ -1,12 +1,12 @@
 
 #include "fridge.h"
-#include <myIOTLog.h>
-#include "tSense.h"
 #include "fridgePixels.h"
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
 #endif
 #include "fridgeToolTips.h"
+#include <myIOTLog.h>
+#include <myTempSensor.h>
 
 
 //------------------------------

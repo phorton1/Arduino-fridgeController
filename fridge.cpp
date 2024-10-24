@@ -11,12 +11,12 @@
 //  Emulate a whole working compressor?
 
 #include "fridge.h"
-#include "uiScreen.h"
-#include "vSense.h"
-#include "tSense.h"
+#include "fridgeScreen.h"
+#include "fridgeVolts.h"
 #include "fridgePixels.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
+#include <myTempSensor.h>
 
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
@@ -79,9 +79,7 @@
 
 
 Fridge *fridge;
-
-OneWire one_wire(PIN_ONE_WIRE);
-tSense t_sense(&one_wire);
+myTempSensor t_sense(PIN_ONE_WIRE);
 
 // non myIOTDevice public static member variable initializations go here
 
@@ -130,7 +128,7 @@ void Fridge::setup()
 
 	pinMode(PIN_MECH_THERM,INPUT_PULLDOWN);
 	
-	ui_screen.init();
+	fridge_screen.init();
 
 	myIOTDevice::setup();
 	randomSeed(time(NULL) + millis() + micros());
@@ -189,7 +187,7 @@ void Fridge::setup()
 	fakeCompressor::init();
 #endif
 
-	v_sense.init();
+	fridge_volts.init();
 	t_sense.init();		// returns 0 or an error_number
 		// We ignore errors in initialization, but will notice
 		// errors on individual measurements.
@@ -209,7 +207,7 @@ void Fridge::setup()
 
 	digitalWrite(LED_COMPRESS_ON,1);
 	
-    ui_screen.backlight(1);
+    fridge_screen.backlight(1);
 		// reset the activity timeout so the screen
 		// doesn't immediately go blank due to long
 		// myIOTDevice::setup() 
@@ -235,7 +233,7 @@ void Fridge::stateTask(void *param)
 void Fridge::onBacklightChanged(const myIOTValue *value, int val)
 {
 	LOGU("onBacklightChanged(%d)",val);
-	ui_screen.backlight(1);
+	fridge_screen.backlight(1);
 }
 
 void Fridge::onBrightnessChanged(const myIOTValue *desc, uint32_t val)
@@ -383,7 +381,7 @@ void measureTemperature(String id, float *rslt, int *err)
 {
 	if (id != "")
 	{
-		float temp = t_sense.getDegreesC(id);
+		float temp = t_sense.getDegreesC(id.c_str());
 		if (temp < TEMPERATURE_ERROR)
 		{
 			*rslt = temp;
@@ -412,7 +410,7 @@ void Fridge::stateMachine()
 			fakeCompressor::run();
 		#endif
 
-		v_sense.sense();
+		fridge_volts.sense();
 
 	}
 
@@ -426,23 +424,26 @@ void Fridge::stateMachine()
 	{
 		last_tsense = now;
 
-		measureTemperature(_fridge_sense_id,&cur_fridge_temp,&m_fridge_temp_error);
-		measureTemperature(_comp_sense_id,&cur_comp_temp,&m_comp_temp_error);
-		measureTemperature(_extra_sense_id,&cur_extra_temp,&m_extra_temp_error);
-		// odd place for this
+
 
 		#if WITH_FAKE_COMPRESSOR
 			if (fakeCompressor::_use_fake)
 			{
-				if (fakeCompressor::g_fridge_temp > _setpoint_high)
+				cur_fridge_temp = fakeCompressor::g_fridge_temp;
+				cur_comp_temp = fakeCompressor::g_comp_temp;
+				if (cur_fridge_temp > _setpoint_high)
 					cur_mech_therm = 1;
-				if (fakeCompressor::g_fridge_temp < _setpoint_low)
+				if (cur_fridge_temp < _setpoint_low)
 					cur_mech_therm = 0;
 			}
 			else
 		#endif
+		{
+			measureTemperature(_fridge_sense_id,&cur_fridge_temp,&m_fridge_temp_error);
+			measureTemperature(_comp_sense_id,&cur_comp_temp,&m_comp_temp_error);
+			measureTemperature(_extra_sense_id,&cur_extra_temp,&m_extra_temp_error);
 			cur_mech_therm = digitalRead(PIN_MECH_THERM);
-
+		}
 
 		#if DEBUG_TSENSE
 			LOGD("TSENSE fridge=%0.3fC comp=%0.3fC  mech=%d  rpm=%d",
@@ -469,7 +470,7 @@ void Fridge::stateMachine()
 	}
 
 	// determine whether to run or stop the refrigerator
-	// We only set rpms if v_sense._plus_on, if the conmpressor has power,
+	// We only set rpms if fridge_volts._plus_on, if the conmpressor has power,
 	// otherwise we turn off the rpms.
 
 	static int last_mode = _fridge_mode;
@@ -482,7 +483,7 @@ void Fridge::stateMachine()
 	if (!in_clear_error)	// dont change rpm while in a clearError() call
 	{
 		int rpm = 0;
-		if (v_sense._plus_on)
+		if (fridge_volts._plus_on)
 		{
 			if (_fridge_mode == FRIDGE_MODE_RUN_MIN)
 				rpm = _min_rpm;
@@ -595,15 +596,15 @@ void Fridge::stateMachine()
 	uint32_t color_state = MY_LED_RED;
 	if (cur_rpm)
 		color_state = MY_LED_BLUE;
-	else if (v_sense._fan_on)
+	else if (fridge_volts._fan_on)
 		color_state = MY_LED_YELLOW;
-	else if (v_sense._plus_on)
+	else if (fridge_volts._plus_on)
 		color_state = MY_LED_GREEN;
 
 	// error pixel
 
 	uint32_t color_error = MY_LED_BLACK;
-	if (v_sense._diag_on)
+	if (fridge_volts._diag_on)
 		color_error = MY_LED_RED;
 
 
@@ -686,7 +687,7 @@ void Fridge::loop()
 
 	// handle UI
 
-	ui_screen.loop();
+	fridge_screen.loop();
 
 	// publish changes every couple of seconds
 	// and log temperature/rpm changes
@@ -716,7 +717,7 @@ void Fridge::loop()
 		addStatusInt(0,status,"CTEMP_ERROR:",m_comp_temp_error);
 		addStatusInt(0,status,"ETEMP_ERROR:",m_extra_temp_error);
 
-		if (!v_sense._plus_on && _fridge_mode)
+		if (!fridge_volts._plus_on && _fridge_mode)
 		{
 			if (status != "")
 				status += "\n";
@@ -736,17 +737,17 @@ void Fridge::loop()
 			do_log = 1;
 			setInt(ID_COMP_RPM,cur_rpm);
 		}
-		if (_inv_error != v_sense._error_code)
-			setInt(ID_INV_ERROR,v_sense._error_code);
-		if (_inv_plus != v_sense._plus_on)
-			setBool(ID_INV_PLUS,v_sense._plus_on);
-		if (_inv_fan != v_sense._fan_on)
-			setBool(ID_INV_FAN,v_sense._fan_on);
+		if (_inv_error != fridge_volts._error_code)
+			setInt(ID_INV_ERROR,fridge_volts._error_code);
+		if (_inv_plus != fridge_volts._plus_on)
+			setBool(ID_INV_PLUS,fridge_volts._plus_on);
+		if (_inv_fan != fridge_volts._fan_on)
+			setBool(ID_INV_FAN,fridge_volts._fan_on);
 
-		if (_volts_inv != v_sense._volts_inv)
-			setFloat(ID_VOLTS_INV,v_sense._volts_inv);
-		if (_volts_5v != v_sense._volts_5V)
-			setFloat(ID_VOLTS_5V,v_sense._volts_5V);
+		if (_volts_inv != fridge_volts._volts_inv)
+			setFloat(ID_VOLTS_INV,fridge_volts._volts_inv);
+		if (_volts_5v != fridge_volts._volts_5V)
+			setFloat(ID_VOLTS_5V,fridge_volts._volts_5V);
 	}
 
 	#if WITH_DATA_LOG
