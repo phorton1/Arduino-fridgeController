@@ -16,7 +16,7 @@
 #include "fridgePixels.h"
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
-#include <myTempSensor.h>
+#include <myIOTTempSensor.h>
 
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
@@ -79,7 +79,7 @@
 
 
 Fridge *fridge;
-myTempSensor t_sense(PIN_ONE_WIRE);
+myIOTTempSensor t_sense(PIN_ONE_WIRE);
 
 // non myIOTDevice public static member variable initializations go here
 

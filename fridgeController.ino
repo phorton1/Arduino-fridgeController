@@ -6,7 +6,7 @@
 #endif
 #include "fridgeToolTips.h"
 #include <myIOTLog.h>
-#include <myTempSensor.h>
+#include <myIOTTempSensor.h>
 
 
 //------------------------------
@@ -97,8 +97,8 @@ const valDescriptor fridge_values[] =
 	{ID_USER_RPM,           VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_user_rpm,        NULL,	{ .int_range	= {2600, 2000, 3500}}, },
 	{ID_MIN_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_min_rpm,         NULL,	{ .int_range	= {2000, 2000, 3500}}, },
 	{ID_MAX_RPM,            VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_max_rpm,         NULL,	{ .int_range	= {3200, 2000, 3500}}, },
-	{ID_FRIDGE_SENSE_ID,    VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_fridge_sense_id, NULL,	MY_TSENSOR_01 },
-	{ID_COMP_SENSE_ID,      VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_comp_sense_id,   NULL,	MY_TSENSOR_02 },
+	{ID_FRIDGE_SENSE_ID,    VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_fridge_sense_id, NULL,	IOT_TSENSOR_01 },
+	{ID_COMP_SENSE_ID,      VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_comp_sense_id,   NULL,	IOT_TSENSOR_02 },
 	{ID_EXTRA_SENSE_ID,     VALUE_TYPE_STRING,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_extra_sense_id,  NULL,	},
 	{ID_TEMP_SENSE_SECS,    VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_temp_sense_secs, NULL,	{ .int_range	= {10,  0,		300}},  },
 	{ID_INV_SENSE_MS,   	VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_inv_sense_ms,	NULL,	{ .int_range	= {20,  5,		1000}}, },
