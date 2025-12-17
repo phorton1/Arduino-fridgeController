@@ -61,20 +61,6 @@
 	myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
 		// 0 = debug_send_data LEVEL
 
-	myIOTWidget_t fridgeWidget = {
-		"fridgeWidget",
-        "/myIOT/jquery.jqplot.min.css?cache=1,"
-            "/myIOT/jquery.jqplot.min.js?cache=1,"
-            "/myIOT/jqplot.dateAxisRenderer.js?cache=1,"
-            "/myIOT/jqplot.cursor.js?cache=1,"
-            "/myIOT/jqplot.highlighter.js?cache=1,"
-            "/myIOT/jqplot.legendRenderer.js?cache=1,"
-			"/myIOT/iotChart.js",
-		"doChart('fridgeData')",
-		"stopChart('fridgeData')",
-		NULL };
-		
-
 #endif	// WITH_DATA_LOG
 
 
@@ -156,19 +142,13 @@ void Fridge::setup()
 	String html = data_log.getChartHTML(
 		300,		// height
 		600,		// width
-		86400,		// default period for the chart
+		2592000,	// default period for the chart = 1 month
 		0 );		// default refresh interval
 
 	#if 0
 		Serial.print("html=");
 		Serial.println(html.c_str());
 	#endif
-
-	// create the iotWidget String for the chart
-	// and store it persistently on the heap
-
-	fridgeWidget.html = new String(html);
-	setDeviceWidget(&fridgeWidget);
 
 	// add the chart link value
 
@@ -796,7 +776,7 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 			
 			int height = myiot_web_server->getArg("height",400);
 			int width  = myiot_web_server->getArg("width",800);
-			int period = myiot_web_server->getArg("period",86400);	// day default
+			int period = myiot_web_server->getArg("period",2592000);	// month default
 			int refresh = myiot_web_server->getArg("refresh",0);
 			return data_log.getChartHTML(height,width,period,refresh);
 		}
