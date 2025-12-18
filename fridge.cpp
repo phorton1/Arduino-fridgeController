@@ -17,13 +17,12 @@
 #include <myIOTLog.h>
 #include <myIOTWebServer.h>
 #include <myIOTTempSensor.h>
+#include <myIOTDataLog.h>
+
 
 #if WITH_FAKE_COMPRESSOR
 	#include "fakeCompressor.h";
 #endif
-
-
-#define WITH_DATA_LOG	1
 
 
 #define DEBUG_TSENSE	0
@@ -36,32 +35,26 @@
 // data_log setup
 //-----------------------------------------------
 
-#if WITH_DATA_LOG
+typedef struct
+{
+	uint32_t	dt;	// filled in by dataLog
+	float		temp1;
+	float		temp2;
+	float		temp3;
+	uint32_t	rpm;
+} fridgeLog_t;
 
-	#include <myIOTDataLog.h>
+// The tick_intervals are 0 based and will be will be lined up
 
-	typedef struct
-	{
-		uint32_t	dt;	// filled in by dataLog
-		float		temp1;
-		float		temp2;
-		float		temp3;
-		uint32_t	rpm;
-	} fridgeLog_t;
-	
-	// The tick_intervals are 0 based and will be will be lined up
+logColumn_t  fridge_cols[] = {
+	{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+	{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+	{"extra",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+	{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
+};
 
-	logColumn_t  fridge_cols[] = {
-		{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-		{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-		{"extra",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-		{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
-	};
-
-	myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
-		// 0 = debug_send_data LEVEL
-
-#endif	// WITH_DATA_LOG
+myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
+	// 0 = debug_send_data LEVEL
 
 
 Fridge *fridge;
@@ -135,27 +128,9 @@ void Fridge::setup()
 
 	setPlotLegend("batt,fan,diode");
 
-	// initialize the dataLog
-	// from a string on the stack
-
-#if WITH_DATA_LOG
-	String html = data_log.getChartHTML(
-		300,		// height
-		600,		// width
-		2592000,	// default period for the chart = 1 month
-		0 );		// default refresh interval
-
-	#if 0
-		Serial.print("html=");
-		Serial.println(html.c_str());
-	#endif
-
-	// add the chart link value
-
-	_chart_link = "<a href='/spiffs/temp_chart.html?uuid=";
+	_chart_link = "<a href='/spiffs/chart.html?uuid=";
 	_chart_link += getUUID();
 	_chart_link += "' target='_blank'>Chart</a>";
-#endif
 
 	//-------------------------------------
 	// Fridge specific intialization
@@ -433,20 +408,10 @@ void Fridge::stateMachine()
 				 cur_rpm);
 		#endif
 
-		#if 0 && WITH_DATA_LOG
-			fridgeLog_t log_rec;
-			log_rec.temp1 = cur_fridge_temp;
-			log_rec.temp2 = cur_comp_temp;
-			log_rec.mech  = cur_mech_therm;
-			log_rec.rpm   = cur_rpm;
-			m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
-		#endif
-
 		// takes a a little over 2ms
 		// we ignore any errors returned by this
 
 		t_sense.measure();
-
 	}
 
 	// determine whether to run or stop the refrigerator
@@ -730,17 +695,15 @@ void Fridge::loop()
 			setFloat(ID_VOLTS_5V,fridge_volts._volts_5V);
 	}
 
-	#if WITH_DATA_LOG
-		if (do_log)
-		{
-			fridgeLog_t log_rec;
-			log_rec.temp1 = _fridge_temp;
-			log_rec.temp2 = _comp_temp;
-			log_rec.temp3 = _extra_temp;
-			log_rec.rpm   = _comp_rpm;
-			m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
-		}
-	#endif
+	if (do_log)
+	{
+		fridgeLog_t log_rec;
+		log_rec.temp1 = _fridge_temp;
+		log_rec.temp2 = _comp_temp;
+		log_rec.temp3 = _extra_temp;
+		log_rec.rpm   = _comp_rpm;
+		m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
+	}
 }
 
 
@@ -749,56 +712,33 @@ void Fridge::loop()
 // chart API
 //----------------------------------------
 
-// virtual
-bool Fridge::showDebug(String path)	// override;
-{
-	// called by myIOTHttp while path still has /custom at front
-	#if !DEBUG_CHART_DATA_HTTP
-		if (path.startsWith("/custom/chart_data/fridgeData"))
-			return 0;
-	#endif
-	return 1;
-}
-
 
 
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
-    // called from myIOTHTTP.cpp::handleRequest()
-	// for any paths that start with /custom/
 {
-	#if WITH_DATA_LOG
-
-		// LOGI("Fridge::onCustomLink(%s)",path.c_str());
-		if (path.startsWith("chart_html/fridgeData"))
-		{
-			// only used by temp_chart.html inasmuch as the
-			// chart html is baked into the myIOT widget
-			
-			int height = myiot_web_server->getArg("height",400);
-			int width  = myiot_web_server->getArg("width",800);
-			int period = myiot_web_server->getArg("period",2592000);	// month default
-			int refresh = myiot_web_server->getArg("refresh",0);
-			return data_log.getChartHTML(height,width,period,refresh);
-		}
-		else if (path.startsWith("chart_header/fridgeData"))
-		{
-			*mime_type = "application/json";
-			return data_log.getChartHeader(NULL,1);
-				// NULL = no custom series colors
-				// 1 = supports incremental update
-		}
-		else if (path.startsWith("chart_data/fridgeData"))
-		{
-			int secs = myiot_web_server->getArg("secs",0);
-			return data_log.sendChartData(secs,false);
-		}
-		else if (path.startsWith("update_chart_data/fridgeData"))
-		{
-			uint32_t since = myiot_web_server->getArg("since",0);
-			return data_log.sendChartData(since,true);
-		}
-	#endif
-
+	LOGD("Fridge::onCustomLink(%s)",path.c_str());
+	if (path.startsWith("chart_html"))
+	{
+		int period = myiot_web_server->getArg("period",2592000);	// month default
+		return data_log.getChartHTML(period,true);
+			// true = with_degrees
+	}
+	else if (path.startsWith("chart_header"))
+	{
+		*mime_type = "application/json";
+		return data_log.getChartHeader(NULL);
+			// NULL = no custom series colors
+	}
+	else if (path.startsWith("chart_data"))
+	{
+		int secs = myiot_web_server->getArg("secs",0);
+		return data_log.sendChartData(secs,false);
+	}
+	else if (path.startsWith("update_chart_data"))
+	{
+		uint32_t since = myiot_web_server->getArg("since",0);
+		return data_log.sendChartData(since,true);
+	}
     return "";
 }
 
