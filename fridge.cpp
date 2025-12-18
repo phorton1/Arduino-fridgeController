@@ -717,16 +717,12 @@ void Fridge::loop()
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
 {
 	LOGD("Fridge::onCustomLink(%s)",path.c_str());
-	if (path.startsWith("chart_html"))
-	{
-		int period = myiot_web_server->getArg("period",2592000);	// month default
-		return data_log.getChartHTML(period,true);
-			// true = with_degrees
-	}
-	else if (path.startsWith("chart_header"))
+	if (path.startsWith("chart_header"))
 	{
 		*mime_type = "application/json";
-		return data_log.getChartHeader(NULL);
+		return data_log.getChartHeader(2592000,1,NULL);
+			// 2592000 = default_period = month
+			// 1 = with_degrees
 			// NULL = no custom series colors
 	}
 	else if (path.startsWith("chart_data"))
