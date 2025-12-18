@@ -783,12 +783,19 @@ String Fridge::onCustomLink(const String &path,  const char **mime_type)
 		else if (path.startsWith("chart_header/fridgeData"))
 		{
 			*mime_type = "application/json";
-			return data_log.getChartHeader();
+			return data_log.getChartHeader(NULL,1);
+				// NULL = no custom series colors
+				// 1 = supports incremental update
 		}
 		else if (path.startsWith("chart_data/fridgeData"))
 		{
 			int secs = myiot_web_server->getArg("secs",0);
-			return data_log.sendChartData(secs);
+			return data_log.sendChartData(secs,false);
+		}
+		else if (path.startsWith("update_chart_data/fridgeData"))
+		{
+			uint32_t since = myiot_web_server->getArg("since",0);
+			return data_log.sendChartData(since,true);
 		}
 	#endif
 
