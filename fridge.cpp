@@ -128,7 +128,7 @@ void Fridge::setup()
 
 	setPlotLegend("batt,fan,diode");
 
-	_chart_link = "<a href='/spiffs/chart.html?uuid=";
+	_chart_link = "<a href='/spiffs/chart.html?data_name=fridgeData&uuid=";
 	_chart_link += getUUID();
 	_chart_link += "' target='_blank'>Chart</a>";
 
