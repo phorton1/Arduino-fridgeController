@@ -32,7 +32,7 @@ how I am using the boot-up defaults on the sensors I
 have.
 
 This notion is also extended into the myIOTDataLog object,
-which now has an explicit type, **LOG_COL_TYPE_TEMPERATURE**,
+which now has an explicit type, **LOG_COL_TYPE_CENTIGRADE_32**,
 for interpretation of logged data values by the webUI
 javascript.
 

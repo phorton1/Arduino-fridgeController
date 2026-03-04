@@ -47,13 +47,13 @@ typedef struct
 // The tick_intervals are 0 based and will be will be lined up
 
 logColumn_t  fridge_cols[] = {
-	{"fridge",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-	{"comp",	LOG_COL_TYPE_TEMPERATURE,	10,		},
-	{"extra",	LOG_COL_TYPE_TEMPERATURE,	10,		},
+	{"fridge",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
+	{"comp",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
+	{"extra",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
 	{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
 };
 
-myIOTDataLog data_log("fridgeData",4,fridge_cols,0);
+myIOTDataLog data_log("fridgeData",4,fridge_cols);
 	// 0 = debug_send_data LEVEL
 
 
