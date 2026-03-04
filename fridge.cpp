@@ -20,11 +20,6 @@
 #include <myIOTDataLog.h>
 
 
-#if WITH_FAKE_COMPRESSOR
-	#include "fakeCompressor.h";
-#endif
-
-
 #define DEBUG_TSENSE	0
 #define DEBUG_SETVALUE	0
 #define DEBUG_CHART_DATA_HTTP  0
@@ -38,19 +33,19 @@
 typedef struct
 {
 	uint32_t	dt;	// filled in by dataLog
-	float		temp1;
-	float		temp2;
-	float		temp3;
-	uint32_t	rpm;
+	int16_t		temp1;
+	int16_t		temp2;
+	int16_t		temp3;
+	uint16_t	rpm;
 } fridgeLog_t;
 
 // The tick_intervals are 0 based and will be will be lined up
 
 logColumn_t  fridge_cols[] = {
-	{"fridge",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
-	{"comp",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
-	{"extra",	LOG_COL_TYPE_CENTIGRADE_32,	10,		},
-	{"rpm",		LOG_COL_TYPE_UINT32,		1000,	},
+	{"fridge",	LOG_COL_TYPE_CENTIGRADE_RAW,	10,		},
+	{"comp",	LOG_COL_TYPE_CENTIGRADE_RAW,	10,		},
+	{"extra",	LOG_COL_TYPE_CENTIGRADE_RAW,	10,		},
+	{"rpm",		LOG_COL_TYPE_UINT16,		    1000,	},
 };
 
 myIOTDataLog data_log("fridgeData",4,fridge_cols);
@@ -69,8 +64,11 @@ int Fridge::m_comp_temp_error;
 int Fridge::m_extra_temp_error;
 bool Fridge::m_force_pixels;
 
-volatile bool in_clear_error;
+int16_t	Fridge::m_raw_fridge_temp;
+int16_t	Fridge::m_raw_comp_temp;
+int16_t	Fridge::m_raw_extra_temp;
 
+volatile bool in_clear_error;
 
 
 //------------------------------
@@ -137,11 +135,6 @@ void Fridge::setup()
 	//-------------------------------------
 
 	LOGI("initial FRIDGE_MODE=%d",_fridge_mode);
-
-#if WITH_FAKE_COMPRESSOR
-	fakeCompressor::init();
-#endif
-
 	fridge_volts.init();
 	t_sense.init();		// returns 0 or an error_number
 		// We ignore errors in initialization, but will notice
@@ -332,18 +325,21 @@ void Fridge::clearInvError()
 // stateMachine()
 //=========================================================
 
-void measureTemperature(String id, float *rslt, int *err)
+static void measureTemperature(String id, int16_t *raw, float *rslt, int *err)
 {
 	if (id != "")
 	{
-		float temp = t_sense.getDegreesC(id.c_str());
-		if (temp < TEMPERATURE_ERROR)
+		*raw = t_sense.getTemperatureRaw(id.c_str());
+		if (*raw == TEMP_RAW_ERROR)
 		{
-			*rslt = temp;
-			*err = 0;
+			*err = t_sense.getLastError();
+			*rslt = TEMPERATURE_ERROR;
 		}
 		else
-			*err = t_sense.getLastError();
+		{
+			*err = 0;
+			*rslt = t_sense.rawToDegreesC(*raw);
+		}
 	}
 }
 
@@ -361,48 +357,28 @@ void Fridge::stateMachine()
 	if (!last_vsense || now - last_vsense >= _inv_sense_ms)
 	{
 		last_vsense = now;
-		#if WITH_FAKE_COMPRESSOR
-			fakeCompressor::run();
-		#endif
-
 		fridge_volts.sense();
-
 	}
 
 	//---------------------------
 	// temperature sensors
 	//---------------------------
 
-
 	static uint32_t last_tsense;
 	if (!last_tsense || now - last_tsense > (_temp_sense_secs * 1000))
 	{
 		last_tsense = now;
 
-
-
-		#if WITH_FAKE_COMPRESSOR
-			if (fakeCompressor::_use_fake)
-			{
-				cur_fridge_temp = fakeCompressor::g_fridge_temp;
-				cur_comp_temp = fakeCompressor::g_comp_temp;
-				if (cur_fridge_temp > _setpoint_high)
-					cur_mech_therm = 1;
-				if (cur_fridge_temp < _setpoint_low)
-					cur_mech_therm = 0;
-			}
-			else
-		#endif
-		{
-			measureTemperature(_fridge_sense_id,&cur_fridge_temp,&m_fridge_temp_error);
-			measureTemperature(_comp_sense_id,&cur_comp_temp,&m_comp_temp_error);
-			measureTemperature(_extra_sense_id,&cur_extra_temp,&m_extra_temp_error);
-			cur_mech_therm = digitalRead(PIN_MECH_THERM);
-		}
+		measureTemperature(_fridge_sense_id,&m_raw_fridge_temp,&cur_fridge_temp,&m_fridge_temp_error);
+		measureTemperature(_comp_sense_id,&m_raw_comp_temp,&cur_comp_temp,&m_comp_temp_error);
+		measureTemperature(_extra_sense_id,&m_raw_extra_temp,&cur_extra_temp,&m_extra_temp_error);
+		cur_mech_therm = digitalRead(PIN_MECH_THERM);
 
 		#if DEBUG_TSENSE
-			LOGD("TSENSE fridge=%0.3fC comp=%0.3fC  mech=%d  rpm=%d",
+			LOGD("TSENSE fridge(%d)=%0.3fC comp(%d)=%0.3fC  mech(%d)=%d  rpm=%d",
+				 m_raw_fridge_temp,
 				 cur_fridge_temp,
+				 m_raw_comp_temp,
 				 cur_comp_temp,
 				 cur_mech_therm,
 				 cur_rpm);
@@ -647,6 +623,7 @@ void Fridge::loop()
 		last_publish = now;
 
 		// publish temperatures
+		// note that we log raw values based on the centigrade changing by 0.1 or more
 
 		if (publishTemp(ID_FRIDGE_TEMP,cur_fridge_temp))
 			do_log = 1;
@@ -698,9 +675,9 @@ void Fridge::loop()
 	if (do_log)
 	{
 		fridgeLog_t log_rec;
-		log_rec.temp1 = _fridge_temp;
-		log_rec.temp2 = _comp_temp;
-		log_rec.temp3 = _extra_temp;
+		log_rec.temp1 = m_raw_fridge_temp;
+		log_rec.temp2 = m_raw_comp_temp;
+		log_rec.temp3 = m_raw_extra_temp;
 		log_rec.rpm   = _comp_rpm;
 		m_log_error = !data_log.addRecord((logRecord_t) &log_rec);
 	}

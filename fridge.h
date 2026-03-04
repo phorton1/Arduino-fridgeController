@@ -8,28 +8,6 @@
 
 #include <myIOTDevice.h>
 
-// global debugging defines
-
-#define WITH_FAKE_COMPRESSOR	1
-	// The FAKE_COMPRESSOR emulates a real running compressor/inverter
-	// connected directly to the Controller (no miniBox needed).
-	// The fake compressor is known by vSense.cpp and tSense.cpp.
-	// With regards to vSense.cpp
-	//		- the FAN/DIODE+ value randomly varies about 12V when
-	//		  the FAKE_COMPRESSOR is on
-	//      - attempts to start the compressor will have a 1 in 3 chance
-	//		  of failing.
-	//      - emulates the DIAG_DIODE and restart behavior in failed starts.
-	//      - can be caused to enter an error state and enter restart cycles
-	//		  STOP by setting FAKE_INV_ERR in the UI
-	//      - starts and stops the compressor based on a setRPM() method
-	// With regards to tSense.cpp, the fake compressor
-	// 		- has an ambient temperature of 80F
-	//		- heats up when the compressor is running; faster at higher rpm
-	//		- cools down the refridgerator when running; slightly faster at higher rpm
-	//      - emulates a refridgerator that warms up	//
-
-
 #define WITH_PWM	1
 
 
@@ -127,23 +105,6 @@
 #define ID_CHART_LINK				"CHART"
 
 
-// fake compressor config values
-
-#define ID_USE_FAKE					"USE_FAKE"
-#define ID_RESET_FAKE				"RESET_FAKE"
-#define ID_FAKE_COMP_ON				"FAKE_COMP_ON"
-#define ID_FAKE_PROB_ERROR			"FAKE_PROB_ERROR"
-#define ID_FAKE_AMBIENT				"FAKE_AMBIENT"
-
-#define ID_FAKE_PERIOD				"FAKE_PERIOD"
-#define ID_COOLING_ACCEL			"COOLING_ACCEL"
-#define ID_WARMING_ACCEL            "WARMING_ACCEL"
-#define ID_HEATING_ACCEL            "HEATING_ACCEL"
-#define ID_COOLDOWN_ACCEL           "COOLDOWN_ACCEL"
-#define ID_MAX_COOL_VEL             "MAX_COOL_VEL"
-#define ID_MAX_WARM_VEL             "MAX_WARM_VEL"
-#define ID_MAX_HEAT_VEL             "MAX_HEAT_VEL"
-#define ID_MAX_DOWN_VEL             "MAX_DOWN_VEL"
 
 
 extern enumValue fridgeModes[];
@@ -204,6 +165,12 @@ public:
 	static int 		m_comp_temp_error;		// low level error getting compressor temperature
 	static int 		m_extra_temp_error;		// low level error getting extra temperature
 	static bool		m_force_pixels;			// to force pixels redraw in onSetBrightness()
+
+	// raw sensor values for logging
+
+	static int16_t	m_raw_fridge_temp;
+	static int16_t	m_raw_comp_temp;
+	static int16_t	m_raw_extra_temp;
 
 	// methods
 

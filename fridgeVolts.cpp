@@ -21,9 +21,6 @@
 #include "fridgeVolts.h"
 #include "fridge.h"
 #include <myIOTLog.h>
-#if WITH_FAKE_COMPRESSOR
-	#include "fakeCompressor.h"
-#endif
 
 // structure
 
@@ -156,57 +153,16 @@ void fridgeVolts::sense()
 	// important to only call every 50ms or so
 	// because this smooths the sensing of inputs
 {
-
 	uint32_t now = millis();
-	// static uint32_t last_read = 0;
-	// if (now - last_read < 50) return;
-	// last_read = now;
 
-	#define TEST_VALUES 0
+	doRead(SAMPLE_PLUS,PIN_S_PLUS);
+	doRead(SAMPLE_FAN,PIN_S_FAN);
+	doRead(SAMPLE_DIODE,PIN_S_DIODE);
+	doRead(SAMPLE_5V,PIN_S_5V);
 
-	#if TEST_VALUES
-
-		if (1)
-		{
-			static int test_values[NUM_PINS] = {20,20,20};
-			for (int i=0; i<NUM_PINS; i++)
-			{
-				// for testing plotter we allow negative numbers
-				// and can try really small numbers
-				test_values[i] += random(5) - 2;
-
-				if (test_values[i] >= 4095)
-					test_values[i] = 4095;
-				if (test_values[i] < -4096)
-					test_values[i] = -4096;
-				sample_val[i] = test_values[i];
-			}
-		}
-		else
-
-	#elif WITH_FAKE_COMPRESSOR
-
-		if (fakeCompressor::_use_fake)
-		{
-			sample_val[SAMPLE_PLUS] = fakeCompressor::g_sample_plus;
-			sample_val[SAMPLE_FAN] = fakeCompressor::g_sample_fan;
-			sample_val[SAMPLE_DIODE] = fakeCompressor::g_sample_diode;
-			sample_val[SAMPLE_5V] = fakeCompressor::g_sample_5V;
-		}
-		else
-		
-	#endif
-	{
-		doRead(SAMPLE_PLUS,PIN_S_PLUS);
-		doRead(SAMPLE_FAN,PIN_S_FAN);
-		doRead(SAMPLE_DIODE,PIN_S_DIODE);
-		doRead(SAMPLE_5V,PIN_S_5V);
-		
-		cur_sample_circ_idx++;
-		if (cur_sample_circ_idx >= NUM_PIN_SAMPLES)
-			cur_sample_circ_idx = 0;
-	}
-
+	cur_sample_circ_idx++;
+	if (cur_sample_circ_idx >= NUM_PIN_SAMPLES)
+		cur_sample_circ_idx = 0;
 
 	// every 100 ms add the voltages calculated from
 	// the samples to the voltage circular buffer and
@@ -239,7 +195,6 @@ void fridgeVolts::sense()
 		cur_volt_circ_idx = (cur_volt_circ_idx+1) % NUM_VOLT_SAMPLES;
 		volt_circ_started = 1;
 	}
-
 
 	#if WITH_WS
 

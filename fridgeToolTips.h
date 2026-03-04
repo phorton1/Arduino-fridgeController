@@ -87,23 +87,6 @@ static const char *fridge_tooltips[] = {
 		"are not visible under values of 10, so 10 is the effective useful "
 		"minimum value of this value. ",
 
-#if WITH_FAKE_COMPRESSOR
-	ID_USE_FAKE,		"Whether to use the fakeCompressor or not, which provides fake temperatures and voltages to the system",
-	ID_RESET_FAKE,		"A command to reset the fake Compressor to some known initial temperatures",
-	ID_FAKE_COMP_ON,	"Emulates turning the 12V power supply Off or On",
-	ID_FAKE_AMBIENT, 	"default(26.67C) - the ambient temperature used for the model",
-	ID_FAKE_PERIOD,		"default(30) - approximate number of seconds for a complete cooling cycle",
-	ID_COOLING_ACCEL,	"How fast the fridge cools when compressor on",
-	ID_WARMING_ACCEL,	"How fast the fridge warms when compressor off",
-	ID_HEATING_ACCEL,	"How fast compressor heats up when on",
-	ID_COOLDOWN_ACCEL,	"How fast compressor cools down when off",
-	ID_MAX_COOL_VEL,	"Maximum rate of fridge cooling",
-	ID_MAX_WARM_VEL,	"Maximum rate of fridge warming",
-	ID_MAX_HEAT_VEL,	"Maximum rate of compressor heating",
-	ID_MAX_DOWN_VEL,	"Maximum rate of compressor cooldown",
-	ID_FAKE_PROB_ERROR,	"not implemented yet",
-#endif
-
 	0 };	// fridge_tooltips
 
 

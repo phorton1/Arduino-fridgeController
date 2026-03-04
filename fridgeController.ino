@@ -1,9 +1,6 @@
 
 #include "fridge.h"
 #include "fridgePixels.h"
-#if WITH_FAKE_COMPRESSOR
-	#include "fakeCompressor.h";
-#endif
 #include "fridgeToolTips.h"
 #include <myIOTLog.h>
 #include <myIOTTempSensor.h>
@@ -32,7 +29,6 @@ static valueIdType dash_items[] = {
 	ID_INV_FAN,
 	ID_VOLTS_INV,
 	ID_VOLTS_5V,
-
 	ID_CHART_LINK,
     0
 };
@@ -50,26 +46,8 @@ static valueIdType config_items[] = {
 	ID_INV_SENSE_MS,
 	ID_CALIB_VOLTS_INV,
 	ID_CALIB_VOLTS_5V,
-
 	ID_BACKLIGHT_SECS,
 	ID_LED_BRIGHTNESS,
-
-#if WITH_FAKE_COMPRESSOR
-	ID_USE_FAKE,
-	ID_RESET_FAKE,
-	ID_FAKE_COMP_ON,
-	ID_FAKE_PROB_ERROR,
-	ID_FAKE_AMBIENT,
-	ID_FAKE_PERIOD,
-	ID_COOLING_ACCEL,
-	ID_WARMING_ACCEL,
-	ID_HEATING_ACCEL,
-	ID_COOLDOWN_ACCEL,
-	ID_MAX_COOL_VEL,
-	ID_MAX_WARM_VEL,
-	ID_MAX_HEAT_VEL,
-	ID_MAX_DOWN_VEL,
-#endif
     0
 };
 
@@ -122,26 +100,7 @@ const valDescriptor fridge_values[] =
 	{ID_BACKLIGHT_SECS,     VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,		(void *) &Fridge::_backlight_secs,  (void *) Fridge::onBacklightChanged, { .int_range	= {30,	15,	BACKLIGHT_ALWAYS_ON}}, },
 	{ID_LED_BRIGHTNESS,  	VALUE_TYPE_INT, 	VALUE_STORE_PREF,     	VALUE_STYLE_NONE,		(void *) &Fridge::_led_brightness,	(void *) Fridge::onBrightnessChanged, { .int_range = { DEFAULT_LED_BRIGHTNESS,  0,  254}} },
 	{ID_CHART_LINK,			VALUE_TYPE_STRING,	VALUE_STORE_PUB,		VALUE_STYLE_READONLY,	(void *) &Fridge::_chart_link, },
-
-#if WITH_FAKE_COMPRESSOR
-	{ID_USE_FAKE,			VALUE_TYPE_BOOL,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_use_fake,	NULL,	{ .int_range	= {1,	0,	1}}, },
-    {ID_RESET_FAKE,         VALUE_TYPE_COMMAND, VALUE_STORE_PROG,       VALUE_STYLE_NONE,    NULL,                       			(void *) fakeCompressor::init },
-	{ID_FAKE_COMP_ON,		VALUE_TYPE_BOOL,    VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_comp_on,		NULL,	{ .int_range	= {0,	0,	1}}, },
-	{ID_FAKE_PROB_ERROR,	VALUE_TYPE_INT,     VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_prob_error,	NULL,	{ .int_range	= {3,	0,	100}}, },
-
-	{ID_FAKE_AMBIENT,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_ambient,		NULL,	{ .float_range	= {26.67, 20, 40}},	},
-	{ID_FAKE_PERIOD,		VALUE_TYPE_INT,		VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_fake_period,		NULL,	{ .int_range	= {4, 	1, 10000}},	},
-	
-	{ID_COOLING_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooling_accel,	NULL,	{ .float_range	= {0.1, -1000, 1000}},	},
-	{ID_WARMING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_warming_accel,	NULL,	{ .float_range	= {0.02, -1000, 1000}},	},
-	{ID_HEATING_ACCEL, 		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_heating_accel,	NULL,	{ .float_range	= {0.5, -1000, 1000}},	},
-	{ID_COOLDOWN_ACCEL,		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_cooldown_accel,	NULL,	{ .float_range	= {0.4, -1000, 1000}},	},
-	{ID_MAX_COOL_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_cool_vel, 	NULL,	{ .float_range	= {2, 	-1000, 1000}},	},
-	{ID_MAX_WARM_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_warm_vel, 	NULL,	{ .float_range	= {0.2, -1000, 1000}},	},
-	{ID_MAX_HEAT_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_heat_vel, 	NULL,	{ .float_range	= {1.6, -1000, 1000}},	},
-	{ID_MAX_DOWN_VEL,  		VALUE_TYPE_FLOAT,	VALUE_STORE_PREF,		VALUE_STYLE_NONE,	(void *) &fakeCompressor::_max_down_vel, 	NULL,	{ .float_range	= {1.8, -1000, 1000}},	},
-#endif                                          
-
+                                       
 };
 
 
