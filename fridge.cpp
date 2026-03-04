@@ -486,19 +486,15 @@ void Fridge::stateMachine()
 	// than 'cur_sys_error' full on/off flash times ...
 
 	uint32_t color_system = MY_LED_CYAN;
-		// default color == WIFI_OFF
-	if (getBool(ID_WIFI))
-	{
-		iotConnectStatus_t wifi_mode = fridge->getConnectStatus();
-		if (wifi_mode == IOT_CONNECT_ALL)
-			color_system = MY_LED_ORANGE;
-		else if (wifi_mode == IOT_CONNECT_AP)
-			color_system = MY_LED_MAGENTA;
-		else if (wifi_mode == IOT_CONNECT_STA)
-			color_system = MY_LED_GREEN;
-		else
-			color_system = MY_LED_RED;
-	}
+	iotConnectStatus_t wifi_mode = fridge->getConnectStatus();
+	if (wifi_mode == IOT_CONNECT_ALL)
+		color_system = MY_LED_ORANGE;
+	else if (wifi_mode == IOT_CONNECT_AP)
+		color_system = MY_LED_MAGENTA;
+	else if (wifi_mode == IOT_CONNECT_STA)
+		color_system = MY_LED_GREEN;
+	else
+		color_system = MY_LED_RED;
 
 	if (cur_sys_error)
 	{

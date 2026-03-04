@@ -88,7 +88,7 @@
 #define SCREEN_POWER            2
 #define FIRST_IOT_SCREEN        3
 #define SCREEN_CLEAR_ERROR      3
-#define NUM_IOT_SCREENS         13
+#define NUM_IOT_SCREENS         12
 #define NUM_SCREENS             (FIRST_IOT_SCREEN + NUM_IOT_SCREENS)
 
 const char *edit_ids[NUM_IOT_SCREENS] = {
@@ -102,7 +102,6 @@ const char *edit_ids[NUM_IOT_SCREENS] = {
     ID_BACKLIGHT_SECS,
     ID_LED_BRIGHTNESS,
     ID_DEGREE_TYPE,
-    ID_WIFI,
     ID_STA_SSID,
     ID_REBOOT,
 };
