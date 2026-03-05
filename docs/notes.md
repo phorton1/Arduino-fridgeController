@@ -42,27 +42,10 @@ javascript.
 A *bunch* of work was done to the
 [myIOT library](https://github.com/phorton1/Arduino-libraries-myIOT)
 to implement **Data Logging, Charting,** and realtime **Plotting**
-in the WebUI, as well as a nascent notion of device specific **Widgets**.
-
-These new capabilities have *not yet been documented* in the myIOT library,
-although this device, and the
-[Bilge Alarm](https://github.com/phorton1/Arduino-bilgeAlarm)
-have been modified to implement Widgets and Charting, and
-this device, and
-[theClock3](https://github.com/phorton1/Arduino-theClock3) have
-been updated to implement real-time plotting.
-
-At this time, as a result, it is very likely that the
-[myIOTServer](https://github.com/phorton1/base-apps-myIOTServer)
-has been broken and will not work correctly, which is semi-intentional,
-as my current plan is to rework the myIOTServer *away from being
-a Websocket emulator* into more of a pure *socket forwarder*, as
-I think it was **crashing often** on the rPi I use for it.
-
-In any case, the myIOTServer is probably broken at this time.
+in the WebUI.
 
 
-## D. Laser Cut Plastic Tolerances
+## C. Laser Cut Plastic Tolerances
 
 Designed cut: 103x105
 Actual cut:  101.5x103.4mm
@@ -71,7 +54,7 @@ The laser took about 0.75mm to the inside of the desired size.
 All holes are bigger than desired.
 
 
-## E. Post Installation Notes (Design Ideas)
+## D. Post Installation Notes (Design Ideas)
 
 After installing the controller and running the freezer for about 3 days
 I have some general observations, largely specific to my boat.
