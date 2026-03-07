@@ -351,7 +351,6 @@ void Fridge::stateMachine()
 	//--------------------------------
 	// voltage (inverter) sensors
 	//--------------------------------
-	// which is also how fast we run the fake compressor
 
 	static uint32_t last_vsense = 0;
 	if (!last_vsense || now - last_vsense >= _inv_sense_ms)
@@ -391,7 +390,7 @@ void Fridge::stateMachine()
 	}
 
 	// determine whether to run or stop the refrigerator
-	// We only set rpms if fridge_volts._plus_on, if the conmpressor has power,
+	// We only set rpms if fridge_volts._plus_on (the conmpressor has power),
 	// otherwise we turn off the rpms.
 
 	static int last_mode = _fridge_mode;
@@ -552,10 +551,10 @@ void Fridge::stateMachine()
 //=========================================================
 // loop()
 //=========================================================
-// We log the full floating point Centigrade temperature,
-// but we only publish values in Centigrade rounded to 0.1C.
+// We only publish values in Centigrade rounded to 0.1C, although
+// the actual granularity of the measurements is C/128.
 // Centigrade is more granular than Farenheit, but in the UI
-// we will round those again to the nearest 10't in F, and
+// we will round those again to the nearest 10'th in F, and
 // precision is lost, so the values shown in the UI may not
 // agree with the (dummy) values that are shown in DEBUG_TSENSE
 
@@ -565,7 +564,6 @@ float round1(float val)
 		val > 0 ? 0.05 :
 		val < 0 ? -0.05 :
 		0.0;
-
 	int ival = val * 10;
 	return ((float)ival) / 10.0;
 }
@@ -684,7 +682,6 @@ void Fridge::loop()
 //----------------------------------------
 // chart API
 //----------------------------------------
-
 
 
 String Fridge::onCustomLink(const String &path,  const char **mime_type)
